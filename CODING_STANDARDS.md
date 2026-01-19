@@ -103,6 +103,47 @@ Use getters for lazy instantiation, no manual caching with `_property`.
 - ElectroDB Service getters: name after collection (e.g., `accountService` for `account` collection)
 - Derive types from ElectroDB utilities (`EntityItem`, `CreateEntityItem`)
 
+### File Naming
+
+Use **kebab-case** for all file and directory names.
+
+```
+# Good
+src/
+  user-profile/
+    user-profile.ts
+    user-profile.test.ts
+  email-validator.ts
+  maildir-writer.ts
+
+# Bad
+src/
+  UserProfile/
+    UserProfile.ts
+  emailValidator.ts
+  MaildirWriter.ts
+```
+
+**Rules:**
+
+- All lowercase letters
+- Words separated by hyphens (`-`)
+- Test files: `<name>.test.ts`
+- Index files: `index.ts` (for module re-exports)
+- No PascalCase or camelCase in file names
+
+**Rationale:**
+
+- Avoids cross-platform issues (macOS/Windows are case-insensitive)
+- Prevents git conflicts between `MyFile.ts` and `myfile.ts`
+- URL-friendly and consistent with HTML/CSS conventions
+- Matches Angular, Vue, and Google style guides
+
+**Exceptions:**
+
+- `README.md`, `LICENSE`, `AGENTS.md`, `CODING_STANDARDS.md` (conventional uppercase)
+- Configuration files with established conventions (e.g., `tsconfig.json`, `Dockerfile`)
+
 ## Data Processing
 
 - **Flatten first, then process** - avoid nested loops

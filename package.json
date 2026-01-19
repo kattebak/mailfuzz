@@ -28,9 +28,10 @@
 	"scripts": {
 		"build": "tsc",
 		"dev": "tsx src/cli.ts",
+		"fix": "biome check --write --unsafe .",
 		"lint": "biome check --write .",
 		"lint:check": "biome check .",
-		"test": "vitest run",
+		"test": "npm run typecheck && npm run lint:check && vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
 		"typecheck": "tsc --noEmit",
