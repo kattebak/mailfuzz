@@ -1,0 +1,30 @@
+{
+	"$schema": "./src/config/schema.json",
+	"generate": {
+		"output": "./maildir",
+		"count": 1000,
+		"seed": 2024,
+		"participants": 25,
+		"conversations": 40,
+		"htmlProbability": 0.85,
+		"replyProbability": 0.3,
+		"forwardProbability": 0.05,
+		"unreadProbability": 0.35,
+		"allPlugins": true,
+		"pluginWeights": {
+			"newsletter": 2.5,
+			"marketing": 2.0,
+			"spam": 1.5,
+			"standard": 1.0,
+			"file-upload": 0.3
+		},
+		"locales": {
+			"de": 0.35,
+			"fr": 0.25,
+			"en": 0.3,
+			"es": 0.1
+		},
+		"fallbackLocale": "en",
+		"quiet": false
+	}
+}
