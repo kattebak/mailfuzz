@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FilenameGenerator, validateFlagOrder } from "./FilenameGenerator.js";
+import { FilenameGenerator, validateFlagOrder } from "./filename-generator.js";
 
 describe("FilenameGenerator", () => {
 	describe("generate", () => {

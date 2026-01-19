@@ -6,5 +6,5 @@ export {
 	selectPluginByWeight,
 	validateCapabilities,
 	validatePlugin,
-} from "./PluginInterface.js";
-export { StandardEmailPlugin } from "./StandardEmailPlugin.js";
+} from "./plugin-interface.js";
+export { StandardEmailPlugin } from "./standard-email-plugin.js";

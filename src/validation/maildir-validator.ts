@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { validateFlagOrder } from "../maildir/FilenameGenerator.js";
+import { validateFlagOrder } from "../maildir/filename-generator.js";
 import type { MaildirValidationResult } from "../types.js";
-import { MessageValidator } from "./MessageValidator.js";
+import { MessageValidator } from "./message-validator.js";
 
 /**
  * Validates Maildir directory structure and contents.

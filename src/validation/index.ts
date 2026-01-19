@@ -1,8 +1,8 @@
 export {
 	MaildirValidator,
 	validateMaildir,
-} from "./MaildirValidator.js";
+} from "./maildir-validator.js";
 export {
 	MessageValidator,
 	validateMessage,
-} from "./MessageValidator.js";
+} from "./message-validator.js";

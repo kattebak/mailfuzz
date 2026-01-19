@@ -6,8 +6,8 @@ import {
 	selectPluginByWeight,
 	validatePlugin,
 	validateWeight,
-} from "../plugins/PluginInterface.js";
-import { StandardEmailPlugin } from "../plugins/StandardEmailPlugin.js";
+} from "../plugins/plugin-interface.js";
+import { StandardEmailPlugin } from "../plugins/standard-email-plugin.js";
 import type {
 	ContentConfig,
 	EmailPlugin,
@@ -19,9 +19,9 @@ import type {
 	ParentMessageContext,
 	TimeConfig,
 } from "../types.js";
-import { ConversationManager } from "./ConversationManager.js";
-import { MessageFactory } from "./MessageFactory.js";
-import { ParticipantPool } from "./ParticipantPool.js";
+import { ConversationManager } from "./conversation-manager.js";
+import { MessageFactory } from "./message-factory.js";
+import { ParticipantPool } from "./participant-pool.js";
 
 /**
  * Default configuration values.

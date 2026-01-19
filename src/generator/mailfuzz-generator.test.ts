@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EmailPlugin, PluginCapabilities } from "../types.js";
-import { MailfuzzGenerator } from "./MailfuzzGenerator.js";
+import { MailfuzzGenerator } from "./mailfuzz-generator.js";
 
 const createMockPlugin = (
 	id: string,

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import { parseArgs } from "node:util";
-import { MailfuzzGenerator } from "./generator/MailfuzzGenerator.js";
-import { MaildirWriter } from "./maildir/MaildirWriter.js";
-import { StandardEmailPlugin } from "./plugins/StandardEmailPlugin.js";
-import { validateMaildir } from "./validation/MaildirValidator.js";
+import { MailfuzzGenerator } from "./generator/mailfuzz-generator.js";
+import { MaildirWriter } from "./maildir/maildir-writer.js";
+import { StandardEmailPlugin } from "./plugins/standard-email-plugin.js";
+import { validateMaildir } from "./validation/maildir-validator.js";
 
 const HELP_TEXT = `
 mailfuzz - Generate RFC-compliant synthetic emails

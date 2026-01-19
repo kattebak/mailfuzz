@@ -2,10 +2,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { MailfuzzGenerator } from "./generator/MailfuzzGenerator.js";
-import { MaildirWriter } from "./maildir/MaildirWriter.js";
-import { validateMaildir } from "./validation/MaildirValidator.js";
-import { validateMessage } from "./validation/MessageValidator.js";
+import { MailfuzzGenerator } from "./generator/mailfuzz-generator.js";
+import { MaildirWriter } from "./maildir/maildir-writer.js";
+import { validateMaildir } from "./validation/maildir-validator.js";
+import { validateMessage } from "./validation/message-validator.js";
 
 describe("Integration: Full generation and validation roundtrip", () => {
 	let tempDir: string;

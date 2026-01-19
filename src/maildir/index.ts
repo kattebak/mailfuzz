@@ -1,5 +1,5 @@
 export {
 	FilenameGenerator,
 	validateFlagOrder,
-} from "./FilenameGenerator.js";
-export { MaildirWriter, type WriteResult } from "./MaildirWriter.js";
+} from "./filename-generator.js";
+export { MaildirWriter, type WriteResult } from "./maildir-writer.js";

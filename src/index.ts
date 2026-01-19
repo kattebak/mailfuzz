@@ -2,10 +2,10 @@
 export {
 	MailfuzzGenerator,
 	type MailfuzzGeneratorOptions,
-} from "./generator/MailfuzzGenerator.js";
+} from "./generator/mailfuzz-generator.js";
 
 // Plugins
-export { StandardEmailPlugin } from "./plugins/StandardEmailPlugin.js";
+export { StandardEmailPlugin } from "./plugins/standard-email-plugin.js";
 export {
 	filterPluginsByCapability,
 	isValidPluginId,
@@ -14,24 +14,24 @@ export {
 	selectPluginByWeight,
 	validateCapabilities,
 	validatePlugin,
-} from "./plugins/PluginInterface.js";
+} from "./plugins/plugin-interface.js";
 
 // Maildir
-export { MaildirWriter, type WriteResult } from "./maildir/MaildirWriter.js";
+export { MaildirWriter, type WriteResult } from "./maildir/maildir-writer.js";
 export {
 	FilenameGenerator,
 	validateFlagOrder,
-} from "./maildir/FilenameGenerator.js";
+} from "./maildir/filename-generator.js";
 
 // Validation
 export {
 	MaildirValidator,
 	validateMaildir,
-} from "./validation/MaildirValidator.js";
+} from "./validation/maildir-validator.js";
 export {
 	MessageValidator,
 	validateMessage,
-} from "./validation/MessageValidator.js";
+} from "./validation/message-validator.js";
 
 // Types
 export type {

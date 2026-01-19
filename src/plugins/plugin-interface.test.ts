@@ -12,7 +12,7 @@ import {
 	validateCapabilities,
 	validatePlugin,
 	validateWeight,
-} from "./PluginInterface.js";
+} from "./plugin-interface.js";
 
 const createMockPlugin = (
 	id: string,

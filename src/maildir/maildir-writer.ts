@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { GeneratedMessage } from "../types.js";
-import { FilenameGenerator } from "./FilenameGenerator.js";
+import { FilenameGenerator } from "./filename-generator.js";
 
 /**
  * Result of writing messages to a maildir.

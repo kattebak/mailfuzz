@@ -1,7 +1,7 @@
-export { ConversationManager } from "./ConversationManager.js";
+export { ConversationManager } from "./conversation-manager.js";
 export {
 	MailfuzzGenerator,
 	type MailfuzzGeneratorOptions,
-} from "./MailfuzzGenerator.js";
-export { MessageFactory } from "./MessageFactory.js";
-export { ParticipantPool } from "./ParticipantPool.js";
+} from "./mailfuzz-generator.js";
+export { MessageFactory } from "./message-factory.js";
+export { ParticipantPool } from "./participant-pool.js";
