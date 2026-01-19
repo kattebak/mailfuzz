@@ -146,3 +146,81 @@ export const selectPluginByWeight = (
 	}
 	return lastPlugin;
 };
+
+/**
+ * Validates a single weight value.
+ * Weight must be a finite non-negative number.
+ * A weight of 0 is valid (effectively disables the plugin).
+ */
+export const validateWeight = (
+	weight: number,
+	pluginId: string,
+): { valid: boolean; error?: string } => {
+	if (typeof weight !== "number" || !Number.isFinite(weight)) {
+		return {
+			valid: false,
+			error: `Invalid weight for plugin ${pluginId}: must be a finite number`,
+		};
+	}
+	if (weight < 0) {
+		return {
+			valid: false,
+			error: `Invalid weight for plugin ${pluginId}: must be non-negative`,
+		};
+	}
+	return { valid: true };
+};
+
+/**
+ * Validates that at least one plugin has a non-zero weight.
+ * @param plugins Array of plugins to check
+ * @param resolvedWeights Map of plugin ID to resolved weight
+ */
+export const validateActivePlugins = (
+	plugins: EmailPlugin[],
+	resolvedWeights: Map<string, number>,
+): { valid: boolean; error?: string } => {
+	const totalWeight = plugins.reduce(
+		(sum, p) => sum + (resolvedWeights.get(p.id) ?? 1.0),
+		0,
+	);
+	if (totalWeight === 0) {
+		return {
+			valid: false,
+			error: "At least one plugin must have a non-zero weight",
+		};
+	}
+	return { valid: true };
+};
+
+/**
+ * Resolves the effective weight for a plugin.
+ * Priority: user override → plugin default → 1.0 fallback
+ */
+export const resolvePluginWeight = (
+	plugin: EmailPlugin,
+	userWeights: Record<string, number>,
+): number => {
+	const userWeight = userWeights[plugin.id];
+	if (userWeight !== undefined) {
+		return userWeight;
+	}
+	if (plugin.defaultWeight !== undefined) {
+		return plugin.defaultWeight;
+	}
+	return 1.0;
+};
+
+/**
+ * Build resolved weights map for a set of plugins.
+ */
+export const buildResolvedWeights = (
+	plugins: EmailPlugin[],
+	userWeights: Record<string, number>,
+): Record<string, number> => {
+	const weights: Record<string, number> = {};
+	for (const plugin of plugins) {
+		weights[plugin.id] = resolvePluginWeight(plugin, userWeights);
+	}
+	return weights;
+};

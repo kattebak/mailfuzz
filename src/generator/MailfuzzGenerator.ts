@@ -1,9 +1,11 @@
 import { Faker, en } from "@faker-js/faker";
 import {
+	buildResolvedWeights,
 	filterPluginsByCapability,
 	normalizeWeights,
 	selectPluginByWeight,
 	validatePlugin,
+	validateWeight,
 } from "../plugins/PluginInterface.js";
 import { StandardEmailPlugin } from "../plugins/StandardEmailPlugin.js";
 import type {
@@ -73,7 +75,7 @@ export class MailfuzzGenerator {
 	private readonly faker: Faker;
 	private readonly config: MailfuzzConfig;
 	private readonly plugins: Map<string, EmailPlugin> = new Map();
-	private readonly pluginWeights: Record<string, number>;
+	private pluginWeights: Record<string, number>;
 	private readonly participantPool: ParticipantPool;
 	private readonly conversationManager: ConversationManager;
 	private readonly messageFactory: MessageFactory;
@@ -164,6 +166,43 @@ export class MailfuzzGenerator {
 	 */
 	getPlugins(): EmailPlugin[] {
 		return Array.from(this.plugins.values());
+	}
+
+	/**
+	 * Set or update the weight for a specific plugin.
+	 * @throws Error if weight is invalid or plugin not registered
+	 */
+	setPluginWeight(pluginId: string, weight: number): void {
+		if (!this.plugins.has(pluginId)) {
+			throw new Error(`Plugin not registered: ${pluginId}`);
+		}
+
+		const validation = validateWeight(weight, pluginId);
+		if (!validation.valid) {
+			throw new Error(validation.error);
+		}
+
+		this.pluginWeights[pluginId] = weight;
+	}
+
+	/**
+	 * Get the effective weight for a plugin.
+	 * Returns: user override → plugin default → 1.0 fallback
+	 */
+	getPluginWeight(pluginId: string): number {
+		const plugin = this.plugins.get(pluginId);
+		if (!plugin) {
+			throw new Error(`Plugin not registered: ${pluginId}`);
+		}
+
+		const userWeight = this.pluginWeights[pluginId];
+		if (userWeight !== undefined) {
+			return userWeight;
+		}
+		if (plugin.defaultWeight !== undefined) {
+			return plugin.defaultWeight;
+		}
+		return 1.0;
 	}
 
 	/**
@@ -298,7 +337,12 @@ export class MailfuzzGenerator {
 			return fallbackPlugins[0] as EmailPlugin;
 		}
 
-		const weights = normalizeWeights(eligiblePlugins, this.pluginWeights);
+		// Resolve weights: user override → plugin default → 1.0
+		const resolvedWeights = buildResolvedWeights(
+			eligiblePlugins,
+			this.pluginWeights,
+		);
+		const weights = normalizeWeights(eligiblePlugins, resolvedWeights);
 		const random = this.faker.number.float({ min: 0, max: 1 });
 
 		return selectPluginByWeight(eligiblePlugins, weights, random);

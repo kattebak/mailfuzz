@@ -12,6 +12,7 @@ import type {
 export class StandardEmailPlugin implements EmailPlugin {
 	readonly id = "standard";
 	readonly name = "Standard Email";
+	readonly defaultWeight = 1.0;
 
 	readonly capabilities: PluginCapabilities = {
 		canBeReply: true,

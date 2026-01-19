@@ -209,6 +209,14 @@ export interface EmailPlugin {
 	readonly capabilities: PluginCapabilities;
 
 	/**
+	 * Default weight for this plugin in the generation distribution.
+	 * Represents expected frequency relative to other plugins.
+	 * Guidelines: 1.0 = baseline, 0.5 = half as common, 2.0 = twice as common
+	 * @default 1.0
+	 */
+	readonly defaultWeight?: number;
+
+	/**
 	 * Generate email content for the given context.
 	 */
 	generate(context: GenerationContext): EmailContent | Promise<EmailContent>;

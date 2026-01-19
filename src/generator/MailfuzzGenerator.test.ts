@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
+import type { EmailPlugin, PluginCapabilities } from "../types.js";
 import { MailfuzzGenerator } from "./MailfuzzGenerator.js";
+
+const createMockPlugin = (
+	id: string,
+	capabilities: Partial<PluginCapabilities>,
+	defaultWeight?: number,
+): EmailPlugin => ({
+	id,
+	name: `Mock ${id}`,
+	capabilities: {
+		canBeReply: false,
+		canBeForward: false,
+		canBeOriginal: true,
+		supportsHtml: false,
+		supportsAttachments: false,
+		supportsMultipleRecipients: true,
+		...capabilities,
+	},
+	defaultWeight,
+	generate: () => ({ subject: `Test from ${id}`, text: "Test body" }),
+});
 
 describe("MailfuzzGenerator", () => {
 	describe("construction", () => {
@@ -195,6 +216,87 @@ describe("MailfuzzGenerator", () => {
 			}
 
 			expect(messages).toHaveLength(5);
+		});
+	});
+
+	describe("plugin weight management", () => {
+		it("getPluginWeight returns defaultWeight when no override", () => {
+			const plugin = createMockPlugin("test", {}, 0.5);
+			const generator = new MailfuzzGenerator({
+				plugins: [plugin],
+			});
+
+			expect(generator.getPluginWeight("test")).toBe(0.5);
+		});
+
+		it("getPluginWeight returns 1.0 fallback when no default", () => {
+			const plugin = createMockPlugin("test", {});
+			const generator = new MailfuzzGenerator({
+				plugins: [plugin],
+			});
+
+			expect(generator.getPluginWeight("test")).toBe(1.0);
+		});
+
+		it("getPluginWeight returns user override when set via options", () => {
+			const plugin = createMockPlugin("test", {}, 0.5);
+			const generator = new MailfuzzGenerator({
+				plugins: [plugin],
+				pluginWeights: { test: 2.0 },
+			});
+
+			expect(generator.getPluginWeight("test")).toBe(2.0);
+		});
+
+		it("setPluginWeight updates the weight", () => {
+			const plugin = createMockPlugin("test", {}, 0.5);
+			const generator = new MailfuzzGenerator({
+				plugins: [plugin],
+			});
+
+			expect(generator.getPluginWeight("test")).toBe(0.5);
+
+			generator.setPluginWeight("test", 3.0);
+
+			expect(generator.getPluginWeight("test")).toBe(3.0);
+		});
+
+		it("setPluginWeight throws for unregistered plugin", () => {
+			const generator = new MailfuzzGenerator();
+
+			expect(() => generator.setPluginWeight("unknown", 1.0)).toThrow(
+				"Plugin not registered: unknown",
+			);
+		});
+
+		it("setPluginWeight throws for negative weight", () => {
+			const plugin = createMockPlugin("test", {});
+			const generator = new MailfuzzGenerator({
+				plugins: [plugin],
+			});
+
+			expect(() => generator.setPluginWeight("test", -1)).toThrow(
+				"must be non-negative",
+			);
+		});
+
+		it("setPluginWeight accepts zero weight", () => {
+			const plugin = createMockPlugin("test", {}, 1.0);
+			const generator = new MailfuzzGenerator({
+				plugins: [plugin],
+			});
+
+			generator.setPluginWeight("test", 0);
+
+			expect(generator.getPluginWeight("test")).toBe(0);
+		});
+
+		it("getPluginWeight throws for unregistered plugin", () => {
+			const generator = new MailfuzzGenerator();
+
+			expect(() => generator.getPluginWeight("unknown")).toThrow(
+				"Plugin not registered: unknown",
+			);
 		});
 	});
 });

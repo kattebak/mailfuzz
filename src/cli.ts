@@ -29,6 +29,7 @@ GENERATE OPTIONS:
   --html-probability <n>    Probability of HTML content 0-1 (default: 0.7)
   --reply-probability <n>   Probability of reply vs new (default: 0.4)
   --forward-probability <n> Probability of forward (default: 0.1)
+  -w, --weight <plugin=n>   Override plugin weight (can be repeated)
   -q, --quiet               Suppress progress output
 
 VALIDATE OPTIONS:
@@ -51,6 +52,7 @@ interface GenerateOptions {
 	htmlProbability: number;
 	replyProbability: number;
 	forwardProbability: number;
+	pluginWeights: Record<string, number>;
 	quiet: boolean;
 }
 
@@ -67,6 +69,23 @@ const parseDate = (value: string): Date => {
 	return date;
 };
 
+const parseWeight = (
+	weightArg: string,
+): { pluginId: string; weight: number } => {
+	const [pluginId, weightStr] = weightArg.split("=");
+	if (!pluginId || !weightStr) {
+		throw new Error(`Invalid weight format: ${weightArg}. Use: plugin=number`);
+	}
+	const weight = Number.parseFloat(weightStr);
+	if (Number.isNaN(weight)) {
+		throw new Error(`Invalid weight value: ${weightStr}`);
+	}
+	if (weight < 0) {
+		throw new Error(`Weight must be non-negative: ${weight}`);
+	}
+	return { pluginId, weight };
+};
+
 const parseGenerateArgs = (args: string[]): GenerateOptions => {
 	const { values } = parseArgs({
 		args,
@@ -81,6 +100,7 @@ const parseGenerateArgs = (args: string[]): GenerateOptions => {
 			"html-probability": { type: "string", default: "0.7" },
 			"reply-probability": { type: "string", default: "0.4" },
 			"forward-probability": { type: "string", default: "0.1" },
+			weight: { type: "string", short: "w", multiple: true },
 			quiet: { type: "boolean", short: "q", default: false },
 		},
 		allowPositionals: true,
@@ -88,6 +108,13 @@ const parseGenerateArgs = (args: string[]): GenerateOptions => {
 
 	const now = new Date();
 	const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+	// Parse weight overrides
+	const pluginWeights: Record<string, number> = {};
+	for (const w of values.weight ?? []) {
+		const { pluginId, weight } = parseWeight(w);
+		pluginWeights[pluginId] = weight;
+	}
 
 	return {
 		output: values.output ?? "./maildir",
@@ -104,6 +131,7 @@ const parseGenerateArgs = (args: string[]): GenerateOptions => {
 		forwardProbability: Number.parseFloat(
 			values["forward-probability"] ?? "0.1",
 		),
+		pluginWeights,
 		quiet: values.quiet ?? false,
 	};
 };
@@ -152,6 +180,7 @@ const runGenerate = async (args: string[]): Promise<void> => {
 		startDate: options.startDate,
 		endDate: options.endDate,
 		plugins: [new StandardEmailPlugin()],
+		pluginWeights: options.pluginWeights,
 		htmlProbability: options.htmlProbability,
 		replyProbability: options.replyProbability,
 		forwardProbability: options.forwardProbability,
