@@ -25,6 +25,36 @@ const DEFAULT_CATEGORY_WEIGHTS: CategoryWeight[] = [
 	{ category: "personal", weight: 0.15 },
 ];
 
+/**
+ * Fixed pool of publications to generate multiple issues from the same newsletters.
+ * This creates a more realistic inbox where you see recurring publications.
+ */
+const PUBLICATION_POOL: Array<{
+	name: string;
+	category: NewsletterCategory;
+	baseIssue: number;
+}> = [
+	// Tech newsletters
+	{ name: "The Weekly Stack", category: "tech", baseIssue: 142 },
+	{ name: "DevOps Digest", category: "tech", baseIssue: 89 },
+	{ name: "AI Insider", category: "tech", baseIssue: 56 },
+	{ name: "Frontend Focus", category: "tech", baseIssue: 234 },
+	// Business newsletters
+	{ name: "The Hustle Daily", category: "business", baseIssue: 1204 },
+	{ name: "Startup Roundup", category: "business", baseIssue: 312 },
+	{ name: "Market Pulse", category: "business", baseIssue: 178 },
+	// Curated newsletters
+	{ name: "The Sunday Reader", category: "curated", baseIssue: 89 },
+	{ name: "Links Worth Your Time", category: "curated", baseIssue: 156 },
+	{ name: "The Overflow", category: "curated", baseIssue: 203 },
+	// Industry newsletters
+	{ name: "FinTech Friday", category: "industry", baseIssue: 67 },
+	{ name: "Healthcare Weekly", category: "industry", baseIssue: 134 },
+	// Personal newsletters
+	{ name: "Thoughts & Things", category: "personal", baseIssue: 45 },
+	{ name: "The Curious Mind", category: "personal", baseIssue: 78 },
+];
+
 interface Publication {
 	name: string;
 	tagline: string;
@@ -124,74 +154,18 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 			};
 		}
 
-		const publicationNames: Record<NewsletterCategory, string[]> = {
-			tech: [
-				"The Weekly Stack",
-				"DevOps Digest",
-				"AI Insider",
-				"Security Brief",
-				"Frontend Focus",
-				"The Pragmatic Engineer",
-			],
-			business: [
-				"The Hustle Daily",
-				"Startup Roundup",
-				"Market Pulse",
-				"Founder's Journal",
-				"The Morning Brew",
-			],
-			curated: [
-				"The Sunday Reader",
-				"Links Worth Your Time",
-				"The Overflow",
-				"Interesting Finds",
-				"Weekly Digest",
-			],
-			industry: [
-				"Healthcare Weekly",
-				"Sustainability Now",
-				"Remote Work Report",
-				"FinTech Friday",
-				"EdTech Update",
-			],
-			personal: [
-				"Thoughts & Things",
-				"Weekly Musings",
-				"The Curious Mind",
-				"Notes to Self",
-				"The Long View",
-			],
-		};
+		// Select from the fixed pool to generate multiple issues of the same newsletter
+		const poolForCategory = PUBLICATION_POOL.filter(
+			(p) => p.category === category,
+		);
+		const selectedPub = faker.helpers.arrayElement(poolForCategory);
 
-		const name = faker.helpers.arrayElement(publicationNames[category]);
+		// Generate issue number based on base + offset (creates sequential-ish issues)
+		const issueOffset = faker.number.int({ min: 0, max: 20 });
+		const issueNumber = selectedPub.baseIssue + issueOffset;
 
-		const taglines: Record<NewsletterCategory, string[]> = {
-			tech: [
-				"Your weekly dose of tech news",
-				"Code, cloud, and everything in between",
-				"Keeping developers informed",
-			],
-			business: [
-				"Business news with personality",
-				"Your daily dose of startup news",
-				"Markets, money, and more",
-			],
-			curated: [
-				"The best of the web, curated for you",
-				"Links that matter",
-				"Quality over quantity",
-			],
-			industry: [
-				"Industry insights delivered weekly",
-				"Stay ahead of the curve",
-				"News that matters to your sector",
-			],
-			personal: [
-				"Thoughts on life, work, and everything",
-				"One person's perspective",
-				"Essays and observations",
-			],
-		};
+		// Use locale-aware taglines
+		const tagline = this.generateTagline(context);
 
 		const frequencies: Record<
 			NewsletterCategory,
@@ -204,20 +178,23 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 			personal: ["weekly", "monthly"],
 		};
 
+		// Generate consistent author for publication using name as seed modifier
+		const authorName = faker.person.fullName();
+
 		return {
-			name,
-			tagline: faker.helpers.arrayElement(taglines[category]),
+			name: selectedPub.name,
+			tagline,
 			category,
 			frequency: faker.helpers.arrayElement(frequencies[category]),
-			authorName: faker.person.fullName(),
+			authorName,
 			authorTitle: faker.helpers.arrayElement([
 				"Editor",
 				"Editor-in-Chief",
 				"Founder",
 				"Author",
 			]),
-			domain: `${name.toLowerCase().replace(/[^a-z]/g, "")}.io`,
-			issueNumber: faker.number.int({ min: 1, max: 500 }),
+			domain: `${selectedPub.name.toLowerCase().replace(/[^a-z]/g, "")}.io`,
+			issueNumber,
 		};
 	}
 
@@ -249,9 +226,9 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 		const links: LinkItem[] = [];
 		for (let i = 0; i < count; i++) {
 			links.push({
-				title: faker.company.catchPhrase(),
-				description: faker.lorem.sentence(),
-				url: `https://${faker.internet.domainName()}/${faker.lorem.slug()}`,
+				title: this.generateLinkTitle(context),
+				description: this.generateLinkDescription(context),
+				url: `https://${faker.internet.domainName()}/articles/${faker.string.alphanumeric(8)}`,
 				source: faker.company.name(),
 			});
 		}
@@ -263,9 +240,23 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 
 		const publication = this.generatePublication(context, "tech");
 
+		const techTopics = [
+			"React",
+			"Vue",
+			"Angular",
+			"Svelte",
+			"Node.js",
+			"TypeScript",
+			"Rust",
+			"Go",
+			"Python",
+			"Kubernetes",
+		];
+		const mainTopic = faker.helpers.arrayElement(techTopics);
+
 		const headlines = [
-			`${faker.helpers.arrayElement(["React", "Vue", "Angular", "Svelte", "Node.js"])} ${faker.number.int({ min: 15, max: 25 })}.0 is here`,
-			`The state of ${faker.helpers.arrayElement(["JavaScript", "TypeScript", "Python", "Rust", "Go"])} in ${new Date().getFullYear()}`,
+			`${mainTopic} ${faker.number.int({ min: 15, max: 25 })}.0 is here`,
+			`The state of ${mainTopic} in ${new Date().getFullYear()}`,
 			`Why ${faker.helpers.arrayElement(["microservices", "monoliths", "serverless", "edge computing"])} might be the answer`,
 			`${faker.helpers.arrayElement(["GitHub", "GitLab", "AWS", "Google", "Microsoft"])} announces major update`,
 		];
@@ -273,7 +264,7 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 		const headline = faker.helpers.arrayElement(headlines);
 		const subject = this.generateSubject(context, publication, headline);
 
-		const topStory = faker.lorem.paragraphs(2);
+		const topStory = this.generateArticleContent(context, mainTopic, 3);
 		const links = this.generateLinks(context, 5);
 
 		const linksText = links
@@ -335,8 +326,12 @@ ${publication.name} | ${publication.domain}`;
 		const headline = faker.helpers.arrayElement(headlines);
 		const subject = this.generateSubject(context, publication, headline);
 
-		const topStory = faker.lorem.paragraphs(2);
-		const marketUpdate = `Markets ${faker.helpers.arrayElement(["up", "down"])} ${faker.number.float({ min: 0.1, max: 3, fractionDigits: 2 })}% as ${faker.lorem.sentence()}`;
+		const topStory = this.generateArticleContent(
+			context,
+			"business strategy",
+			3,
+		);
+		const marketUpdate = `Markets ${faker.helpers.arrayElement(["up", "down"])} ${faker.number.float({ min: 0.1, max: 3, fractionDigits: 2 })}% as investors ${faker.helpers.arrayElement(["react to earnings reports", "digest economic data", "await Federal Reserve decision", "weigh geopolitical concerns", "assess tech sector outlook"])}`;
 		const links = this.generateLinks(context, 4);
 
 		const linksText = links
@@ -466,7 +461,7 @@ Unsubscribe: https://${publication.domain}/unsubscribe`;
 		const headline = faker.helpers.arrayElement(headlines);
 		const subject = this.generateSubject(context, publication, headline);
 
-		const analysis = faker.lorem.paragraphs(3);
+		const analysis = this.generateArticleContent(context, industry, 4);
 		const links = this.generateLinks(context, 4);
 
 		const linksText = links
@@ -536,7 +531,15 @@ Unsubscribe: https://${publication.domain}/unsubscribe`;
 			"Hey everyone,",
 		]);
 
-		const body = faker.lorem.paragraphs({ min: 3, max: 6 });
+		const personalTopics = [
+			"personal growth",
+			"creativity",
+			"productivity",
+			"life lessons",
+			"work-life balance",
+		];
+		const topic = faker.helpers.arrayElement(personalTopics);
+		const body = this.generatePersonalEssay(context, topic);
 
 		const signoff = faker.helpers.arrayElement([
 			"Until next time",
@@ -554,7 +557,13 @@ ${body}
 ${signoff},
 ${publication.authorName}
 
-P.S. ${faker.lorem.sentence()}
+P.S. ${faker.helpers.arrayElement([
+			"If you enjoyed this, consider sharing it with a friend.",
+			`Next week I'm diving into something completely different. Stay tuned.`,
+			`I've been working on something new—more details coming soon.`,
+			"Your replies from last week were amazing. Thank you for reading.",
+			"Hit reply and let me know what you think. I read every response.",
+		])}
 
 ---
 Unsubscribe: https://${publication.domain}/unsubscribe
@@ -574,7 +583,15 @@ ${body
 	.join("\n")}
 <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
 <p>${this.escapeHtml(signoff)},<br>${this.escapeHtml(publication.authorName)}</p>
-<p style="font-style: italic; color: #666;">P.S. ${this.escapeHtml(faker.lorem.sentence())}</p>
+<p style="font-style: italic; color: #666;">P.S. ${this.escapeHtml(
+				faker.helpers.arrayElement([
+					"If you enjoyed this, consider sharing it with a friend.",
+					"Next week I'm diving into something completely different. Stay tuned.",
+					"I've been working on something new—more details coming soon.",
+					"Your replies from last week were amazing. Thank you for reading.",
+					"Hit reply and let me know what you think. I read every response.",
+				]),
+			)}</p>
 <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
 <p style="font-size: 12px; color: #999;">
 <a href="https://${publication.domain}/unsubscribe" style="color: #999;">Unsubscribe</a><br>
@@ -757,6 +774,208 @@ ${links
 
 	private capitalize(str: string): string {
 		return str.charAt(0).toUpperCase() + str.slice(1);
+	}
+
+	/**
+	 * Generate contextual article content instead of lorem ipsum.
+	 * Creates more realistic newsletter-style prose.
+	 */
+	private generateArticleContent(
+		context: GenerationContext,
+		topic: string,
+		paragraphCount: number,
+	): string {
+		const { faker } = context;
+
+		const openings = [
+			`The ${topic} landscape has evolved significantly over the past year.`,
+			`When we first started covering ${topic}, few could have predicted where we'd be today.`,
+			`This week brought some fascinating developments in the ${topic} space.`,
+			`Industry experts have been buzzing about recent changes to ${topic}.`,
+			`If you've been following ${topic} closely, you'll know this has been a pivotal moment.`,
+			`The conversation around ${topic} has shifted dramatically in recent months.`,
+		];
+
+		const middles = [
+			`According to ${faker.company.name()}, the market has seen a ${faker.number.int({ min: 15, max: 85 })}% increase in adoption. This trend shows no signs of slowing down, as more organizations recognize the value of investing in this space.`,
+			`"We're seeing unprecedented interest from both enterprise and consumer markets," said ${faker.person.fullName()}, ${faker.person.jobTitle()} at ${faker.company.name()}. The implications for the broader industry are significant.`,
+			`Several key players have made major announcements this week. ${faker.company.name()} unveiled their new strategy, while ${faker.company.name()} doubled down on their existing approach. The competitive dynamics are shifting rapidly.`,
+			`What makes this particularly interesting is the intersection with broader trends. As ${faker.company.buzzPhrase()} becomes more prevalent, we're likely to see even more innovation in this area.`,
+			`The data tells a compelling story. Research from ${faker.company.name()} indicates that ${faker.number.int({ min: 60, max: 90 })}% of industry leaders are prioritizing this in their ${new Date().getFullYear()} roadmaps.`,
+			`This isn't just about technology—it's about fundamentally rethinking how we approach ${faker.company.buzzNoun()}. The most successful organizations are those that understand this distinction.`,
+		];
+
+		const closings = [
+			`Looking ahead, we expect these trends to accelerate. The question isn't whether to adapt, but how quickly you can move.`,
+			`We'll continue monitoring this space closely. In the meantime, consider how these developments might affect your own strategy.`,
+			"As always, we recommend taking a measured approach. Not every trend deserves immediate action, but this one warrants attention.",
+			`The bottom line: this is a space worth watching. We'll have more analysis in next week's issue.`,
+		];
+
+		const paragraphs: string[] = [];
+		paragraphs.push(faker.helpers.arrayElement(openings));
+
+		for (let i = 0; i < paragraphCount - 2; i++) {
+			paragraphs.push(faker.helpers.arrayElement(middles));
+		}
+
+		if (paragraphCount > 1) {
+			paragraphs.push(faker.helpers.arrayElement(closings));
+		}
+
+		return paragraphs.join("\n\n");
+	}
+
+	/**
+	 * Generate structured HTML article with headers and sections.
+	 */
+	private generateLongFormHtmlContent(
+		context: GenerationContext,
+		topic: string,
+	): string {
+		const { faker } = context;
+
+		const sections = [
+			{
+				header: `What's New in ${this.capitalize(topic)}`,
+				content: this.generateArticleContent(context, topic, 2),
+			},
+			{
+				header: "Key Takeaways",
+				content: `<ul style="line-height: 1.8;">
+<li>${faker.company.buzzPhrase()} is becoming increasingly important</li>
+<li>Early adopters are seeing ${faker.number.int({ min: 20, max: 60 })}% improvements in efficiency</li>
+<li>The market is projected to grow to $${faker.number.int({ min: 10, max: 500 })}B by ${new Date().getFullYear() + 3}</li>
+<li>${faker.company.name()} and ${faker.company.name()} are leading the charge</li>
+</ul>`,
+			},
+			{
+				header: "Expert Analysis",
+				content: this.generateArticleContent(context, topic, 3),
+			},
+			{
+				header: "What This Means For You",
+				content: this.generateArticleContent(context, topic, 2),
+			},
+		];
+
+		return sections
+			.map(
+				(section) =>
+					`<h3 style="color: #333; margin-top: 30px; padding-bottom: 10px; border-bottom: 1px solid #eee;">${this.escapeHtml(section.header)}</h3>\n${
+						section.content.includes("<")
+							? section.content
+							: section.content
+									.split("\n\n")
+									.map(
+										(p) =>
+											`<p style="color: #444; line-height: 1.7;">${this.escapeHtml(p)}</p>`,
+									)
+									.join("\n")
+					}`,
+			)
+			.join("\n");
+	}
+
+	/**
+	 * Generate a personal essay style newsletter content.
+	 */
+	private generatePersonalEssay(
+		context: GenerationContext,
+		topic: string,
+	): string {
+		const { faker } = context;
+
+		const openings = [
+			`I've been thinking a lot about ${topic} lately.`,
+			`Something happened this week that got me reflecting on ${topic}.`,
+			`A conversation with a friend reminded me why ${topic} matters so much.`,
+			`I wasn't planning to write about ${topic} today, but here we are.`,
+			`Let me tell you about a lesson I learned about ${topic}.`,
+		];
+
+		const middles = [
+			`The thing is, most of us approach ${topic} completely wrong. We assume it's about doing more, when really it's about doing less of the wrong things. I learned this the hard way after years of ${faker.word.verb()}ing my way through life.`,
+			`When I talk to people about ${topic}, I notice a pattern. They know what they should do, but something holds them back. Fear, mostly. Fear of ${faker.word.verb()}ing wrong. Fear of what others might think. Fear of actually succeeding.`,
+			`Here's what ${faker.number.int({ min: 10, max: 20 })} years of experience has taught me: ${topic} isn't a destination. It's a practice. Some days you'll feel like you've figured it all out. Other days, you'll wonder if you know anything at all. Both are normal.`,
+			`I used to think ${topic} was about big, dramatic changes. Grand gestures. Transformative moments. Now I know better. It's the small, daily choices that compound over time. The boring stuff that nobody talks about.`,
+			`The best advice I ever received about ${topic} came from an unexpected place. A ${faker.person.jobTitle()} I met at a ${faker.company.catchPhraseAdjective()} conference told me something that changed everything: "Stop optimizing and start experiencing."`,
+		];
+
+		const closings = [
+			`So that's what I've been mulling over this week. No grand conclusions, just observations. Sometimes that's enough.`,
+			`I'm still figuring this out, honestly. But I wanted to share where I am in my thinking. Maybe it resonates with you too.`,
+			`This is all to say: give yourself permission to be imperfect. To experiment. To change your mind. That's where the real growth happens.`,
+			"Thanks for letting me think out loud with you. These newsletters are as much for me as they are for you—a way to process and reflect.",
+		];
+
+		const paragraphs: string[] = [];
+		paragraphs.push(faker.helpers.arrayElement(openings));
+
+		const middleCount = faker.number.int({ min: 2, max: 4 });
+		for (let i = 0; i < middleCount; i++) {
+			paragraphs.push(faker.helpers.arrayElement(middles));
+		}
+
+		paragraphs.push(faker.helpers.arrayElement(closings));
+
+		return paragraphs.join("\n\n");
+	}
+
+	/**
+	 * Generate a locale-aware tagline using hybrid approach.
+	 */
+	private generateTagline(context: GenerationContext): string {
+		const { faker } = context;
+		const patterns = [
+			() => faker.company.catchPhrase(),
+			() =>
+				`${this.capitalize(faker.word.adjective())} ${faker.word.noun()} ${faker.word.adverb()}`,
+			() =>
+				`${this.capitalize(faker.word.noun())} ${faker.word.preposition()} ${faker.word.noun()}`,
+			() =>
+				`${this.capitalize(faker.word.verb())} ${faker.word.adjective()} ${faker.word.noun()}`,
+		];
+		return faker.helpers.arrayElement(patterns)();
+	}
+
+	/**
+	 * Generate a locale-aware link description using hybrid approach.
+	 */
+	private generateLinkDescription(context: GenerationContext): string {
+		const { faker } = context;
+		const patterns = [
+			() =>
+				`${this.capitalize(faker.word.adjective())} ${faker.word.noun()} ${faker.word.preposition()} ${faker.word.adjective()} ${faker.word.noun()}.`,
+			() =>
+				`${this.capitalize(faker.word.verb())} ${faker.word.noun()} ${faker.word.adverb()}.`,
+			() => `${faker.company.catchPhrase()}.`,
+			() =>
+				`${faker.company.name()}: ${this.capitalize(faker.word.adjective())} ${faker.word.noun()}.`,
+			() =>
+				`${this.capitalize(faker.word.adjective())} ${faker.word.noun()} ${faker.word.verb()} ${faker.word.noun()}.`,
+		];
+		return faker.helpers.arrayElement(patterns)();
+	}
+
+	/**
+	 * Generate a locale-aware link title using hybrid approach.
+	 */
+	private generateLinkTitle(context: GenerationContext): string {
+		const { faker } = context;
+		const patterns = [
+			() =>
+				`${this.capitalize(faker.word.adjective())} ${this.capitalize(faker.word.noun())}`,
+			() =>
+				`${this.capitalize(faker.word.verb())} ${this.capitalize(faker.word.noun())} ${faker.word.adverb()}`,
+			() => `${faker.company.catchPhrase()}`,
+			() => `${faker.company.name()}: ${this.capitalize(faker.word.noun())}`,
+			() =>
+				`${this.capitalize(faker.word.adjective())} ${this.capitalize(faker.word.noun())} ${new Date().getFullYear()}`,
+			() =>
+				`${this.capitalize(faker.word.verb())} ${faker.word.preposition()} ${this.capitalize(faker.word.noun())}`,
+		];
+		return faker.helpers.arrayElement(patterns)();
 	}
 
 	private escapeHtml(text: string): string {

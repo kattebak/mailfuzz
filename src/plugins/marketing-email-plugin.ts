@@ -276,9 +276,9 @@ Unsubscribe: ${compliance.unsubscribeUrl}`;
 
 		const productName = `${this.capitalize(faker.word.adjective())} ${this.capitalize(faker.commerce.product())}`;
 		const productFeatures = [
-			faker.commerce.productDescription(),
-			faker.commerce.productDescription(),
-			faker.commerce.productDescription(),
+			this.generateBenefit(context),
+			this.generateBenefit(context),
+			this.generateBenefit(context),
 		];
 
 		const subject = faker.helpers.arrayElement([
@@ -515,10 +515,10 @@ Great news for our ${tier} member!
 Your current points balance: ${points.toLocaleString()} points
 
 As a ${tier} member, you enjoy:
-- Free shipping on all orders
-- Early access to sales
-- Exclusive member discounts
-- Birthday rewards
+- ${this.generateBenefit(context)}
+- ${this.generateBenefit(context)}
+- ${this.generateBenefit(context)}
+- ${this.generateBenefit(context)}
 
 Visit ${brand.domain}/rewards to see your benefits.
 
@@ -596,7 +596,7 @@ ${isBirthday ? '<p style="font-size: 24px; color: #333;">Enjoy <strong>25% OFF</
 
 It's been ${timeAway} since we've seen you at ${brand.name}, and we miss you!
 
-A lot has changed since your last visit. Come back and see what's new.
+${this.generateMarketingBody(context, brand)}
 
 As a special welcome back offer, here's ${discount}% off your next order.
 
@@ -655,6 +655,62 @@ Unsubscribe: ${compliance.unsubscribeUrl}`;
 		}
 
 		return result;
+	}
+
+	/**
+	 * Generate a locale-aware call to action.
+	 * Uses faker's locale-aware word methods for dynamic content.
+	 */
+	private generateCta(context: GenerationContext): string {
+		const { faker } = context;
+		const patterns = [
+			() => `${this.capitalize(faker.word.verb())} ${faker.word.noun()}`,
+			() => this.capitalize(faker.word.verb()),
+			() => `${this.capitalize(faker.word.adjective())} ${faker.word.noun()}`,
+		];
+		return faker.helpers.arrayElement(patterns)();
+	}
+
+	/**
+	 * Generate locale-aware marketing body text.
+	 */
+	private generateMarketingBody(
+		context: GenerationContext,
+		brand: Brand,
+	): string {
+		const { faker } = context;
+
+		const patterns = [
+			() =>
+				`${this.capitalize(faker.word.adjective())} ${faker.word.noun()} ${faker.word.preposition()} ${faker.word.adjective()} ${faker.word.noun()}.`,
+			() => `${faker.company.catchPhrase()}.`,
+			() =>
+				`${this.capitalize(faker.word.verb())} ${faker.word.adjective()} ${faker.word.noun()} ${faker.word.adverb()}.`,
+			() => `${faker.commerce.productDescription()}.`,
+		];
+
+		const sentences: string[] = [];
+		const count = faker.number.int({ min: 2, max: 4 });
+		for (let i = 0; i < count; i++) {
+			sentences.push(faker.helpers.arrayElement(patterns)());
+		}
+
+		return sentences.join(" ");
+	}
+
+	/**
+	 * Generate a locale-aware product benefit.
+	 */
+	private generateBenefit(context: GenerationContext): string {
+		const { faker } = context;
+		const patterns = [
+			() => `${this.capitalize(faker.word.adjective())} ${faker.word.noun()}`,
+			() => `${this.capitalize(faker.word.verb())} ${faker.word.adverb()}`,
+			() => faker.company.buzzPhrase(),
+			() =>
+				`${this.capitalize(faker.word.adjective())} ${faker.word.adjective()} ${faker.word.noun()}`,
+		];
+		return faker.helpers.arrayElement(patterns)();
 	}
 
 	private escapeHtml(text: string): string {

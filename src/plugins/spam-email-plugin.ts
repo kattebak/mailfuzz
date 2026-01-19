@@ -274,38 +274,31 @@ ${text
 	private generatePharmaceutical(context: GenerationContext): EmailContent {
 		const { faker, requestHtml } = context;
 
-		const products = [
-			{ name: "V1AGRA", claim: "enhancement" },
-			{ name: "C1ALIS", claim: "enhancement" },
-			{ name: "WEIGHT LOSS PILLS", claim: "lose 30 pounds in 30 days" },
-			{ name: "MUSCLE BUILDER", claim: "gain 20 pounds of muscle" },
-			{ name: "BRAIN BOOSTER", claim: "increase IQ by 40 points" },
-		];
-
-		const product = faker.helpers.arrayElement(products);
+		const productName = `${this.capitalize(faker.word.adjective())} ${this.capitalize(faker.word.noun())}`;
+		const claim = this.generateSpamClaim(context);
 		const discount = faker.helpers.arrayElement([50, 60, 70, 80, 90]);
+		const urgency = this.generateUrgency(context);
 
 		const subject = faker.helpers.arrayElement([
-			`Save ${discount}% on your prescriptions`,
-			"The secret doctors don't want you to know",
-			`${product.name} - Limited Time Offer`,
-			"Guaranteed results or your money back",
-			"Doctor approved formula - No prescription needed",
+			`${discount}% ${faker.word.verb()} ${faker.word.noun()}`,
+			`${productName} - ${this.capitalize(faker.word.adjective())}!`,
+			this.generateUrgency(context),
+			`${faker.number.int({ min: 50, max: 90 })}% ${faker.word.noun()}`,
 		]);
 
-		const text = `AMAZING OFFER!!!
+		const text = `${urgency}
 
-${product.name} - ${discount}% OFF!!!
+${productName} - ${discount}% OFF!!!
 
-${product.claim.toUpperCase()} GUARANTEED!
+${claim.toUpperCase()}!
 
-No prescription needed!
-Discrete shipping!
-Same day delivery!
+${this.capitalize(faker.word.adjective())} ${faker.word.noun()}!
+${this.capitalize(faker.word.adjective())} ${faker.word.noun()}!
+${this.capitalize(faker.word.adjective())} ${faker.word.noun()}!
 
-ORDER NOW: www.${faker.internet.domainWord()}-pharmacy.${faker.helpers.arrayElement(SUSPICIOUS_TLDS)}
+ORDER NOW: www.${faker.internet.domainWord()}-${faker.word.noun()}.${faker.helpers.arrayElement(SUSPICIOUS_TLDS)}
 
-LIMITED TIME OFFER - ACT NOW!
+${urgency}
 
 To unsubscribe reply with STOP`;
 
@@ -317,12 +310,12 @@ To unsubscribe reply with STOP`;
 <head><meta charset="utf-8"></head>
 <body style="font-family: Comic Sans MS, cursive; background-color: #ffff00;">
 <div style="text-align: center; padding: 20px;">
-<h1 style="color: red; font-size: 36px;">AMAZING OFFER!!!</h1>
-<h2 style="color: blue;">${this.escapeHtml(product.name)} - ${discount}% OFF!!!</h2>
-<p style="font-size: 24px; color: green;">${this.escapeHtml(product.claim.toUpperCase())} GUARANTEED!</p>
-<p><blink>LIMITED TIME OFFER</blink></p>
-<p style="font-size: 18px;">No prescription needed! Discrete shipping!</p>
-<a href="#" style="background-color: red; color: white; padding: 20px 40px; font-size: 24px; text-decoration: none;">ORDER NOW!!!</a>
+<h1 style="color: red; font-size: 36px;">${this.escapeHtml(urgency)}</h1>
+<h2 style="color: blue;">${this.escapeHtml(productName)} - ${discount}% OFF!!!</h2>
+<p style="font-size: 24px; color: green;">${this.escapeHtml(claim.toUpperCase())}!</p>
+<p><blink>${this.escapeHtml(this.generateUrgency(context))}</blink></p>
+<p style="font-size: 18px;">${this.escapeHtml(this.capitalize(faker.word.adjective()))} ${this.escapeHtml(faker.word.noun())}!</p>
+<a href="#" style="background-color: red; color: white; padding: 20px 40px; font-size: 24px; text-decoration: none;">${this.escapeHtml(this.capitalize(faker.word.verb()))}!!!</a>
 </div>
 </body>
 </html>`;
@@ -409,33 +402,33 @@ ${lotteryName}
 	private generateAdult(context: GenerationContext): EmailContent {
 		const { faker, requestHtml } = context;
 
-		const siteName = `${faker.word.adjective()}${faker.word.noun()}`.replace(
-			/\s/g,
-			"",
-		);
+		const siteName =
+			`${this.capitalize(faker.word.adjective())}${this.capitalize(faker.word.noun())}`.replace(
+				/\s/g,
+				"",
+			);
 
 		const subject = faker.helpers.arrayElement([
-			"Someone wants to meet you",
-			"3 new matches in your area",
-			"You have unread messages",
-			`${faker.person.firstName()} viewed your profile`,
-			"New connection request",
-			"Your match is waiting",
+			`${faker.person.firstName()} ${faker.word.verb()}s ${faker.word.noun()}`,
+			`${faker.number.int({ min: 2, max: 8 })} ${faker.word.adjective()} ${faker.word.noun()}s`,
+			`${this.capitalize(faker.word.adjective())} ${faker.word.noun()}`,
+			`${faker.person.firstName()} ${faker.word.verb()}`,
+			`${this.capitalize(faker.word.adjective())} ${faker.word.noun()}`,
 		]);
 
-		const text = `Hi there!
+		const text = `${this.capitalize(faker.word.interjection())}!
 
-You have new activity on your profile at ${siteName}.com!
+${this.capitalize(faker.word.adjective())} ${faker.word.noun()} ${faker.word.preposition()} ${siteName}.com!
 
-- ${faker.number.int({ min: 2, max: 8 })} people viewed your profile
-- ${faker.number.int({ min: 1, max: 5 })} new messages waiting
-- ${faker.number.int({ min: 1, max: 3 })} matches in your area
+- ${faker.number.int({ min: 2, max: 8 })} ${faker.word.adjective()} ${faker.word.noun()}s
+- ${faker.number.int({ min: 1, max: 5 })} ${faker.word.adjective()} ${faker.word.noun()}s
+- ${faker.number.int({ min: 1, max: 3 })} ${faker.word.adjective()} ${faker.word.noun()}s
 
-Don't keep them waiting! Log in now to see who's interested.
+${this.capitalize(faker.word.verb())} ${faker.word.adverb()}!
 
 Visit: www.${siteName.toLowerCase()}.${faker.helpers.arrayElement(SUSPICIOUS_TLDS)}
 
-To stop receiving these emails, click here.`;
+${this.capitalize(faker.word.verb())} ${faker.word.noun()}.`;
 
 		const result: EmailContent = { subject, text };
 
@@ -446,14 +439,14 @@ To stop receiving these emails, click here.`;
 <body style="font-family: Arial, sans-serif; background-color: #330033; color: white; padding: 20px;">
 <div style="max-width: 500px; margin: 0 auto; text-align: center;">
 <h2 style="color: #ff66cc;">${this.escapeHtml(siteName)}</h2>
-<p style="font-size: 18px;">You have new activity!</p>
+<p style="font-size: 18px;">${this.escapeHtml(this.capitalize(faker.word.adjective()))} ${this.escapeHtml(faker.word.noun())}!</p>
 <div style="background-color: #440044; padding: 20px; border-radius: 10px; margin: 20px 0;">
-<p>Profile views: ${faker.number.int({ min: 2, max: 8 })}</p>
-<p>New messages: ${faker.number.int({ min: 1, max: 5 })}</p>
-<p>Local matches: ${faker.number.int({ min: 1, max: 3 })}</p>
+<p>${this.escapeHtml(this.capitalize(faker.word.noun()))}: ${faker.number.int({ min: 2, max: 8 })}</p>
+<p>${this.escapeHtml(this.capitalize(faker.word.noun()))}: ${faker.number.int({ min: 1, max: 5 })}</p>
+<p>${this.escapeHtml(this.capitalize(faker.word.noun()))}: ${faker.number.int({ min: 1, max: 3 })}</p>
 </div>
-<a href="#" style="background-color: #ff3399; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; display: inline-block;">See Who's Interested</a>
-<p style="font-size: 10px; margin-top: 30px; color: #999;">Click here to unsubscribe</p>
+<a href="#" style="background-color: #ff3399; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; display: inline-block;">${this.escapeHtml(this.capitalize(faker.word.verb()))} ${this.escapeHtml(faker.word.adverb())}</a>
+<p style="font-size: 10px; margin-top: 30px; color: #999;">${this.escapeHtml(this.capitalize(faker.word.verb()))} ${this.escapeHtml(faker.word.noun())}</p>
 </div>
 <img src="https://tracking.${siteName.toLowerCase()}.com/pixel.gif" width="1" height="1" style="display:none;">
 </body>
@@ -548,6 +541,63 @@ ${template.text
 		}
 
 		return result;
+	}
+
+	private capitalize(str: string): string {
+		return str.charAt(0).toUpperCase() + str.slice(1);
+	}
+
+	/**
+	 * Generate a locale-aware spam claim/benefit.
+	 */
+	private generateSpamClaim(context: GenerationContext): string {
+		const { faker } = context;
+		const patterns = [
+			() =>
+				`${this.capitalize(faker.word.verb())} ${faker.word.noun()} ${faker.word.adverb()}`,
+			() =>
+				`${this.capitalize(faker.word.adjective())} ${faker.word.noun()} ${faker.word.verb()}`,
+			() =>
+				`${faker.number.int({ min: 10, max: 99 })}% ${faker.word.adjective()} ${faker.word.noun()}`,
+			() => `${this.capitalize(faker.word.verb())} ${faker.word.adverb()}`,
+		];
+		return faker.helpers.arrayElement(patterns)();
+	}
+
+	/**
+	 * Generate locale-aware scam body content.
+	 */
+	private generateScamBody(context: GenerationContext): string {
+		const { faker } = context;
+		const patterns = [
+			() =>
+				`${this.capitalize(faker.word.adjective())} ${faker.word.noun()} ${faker.word.preposition()} ${faker.word.adjective()} ${faker.word.noun()}.`,
+			() =>
+				`${this.capitalize(faker.word.verb())} ${faker.word.noun()} ${faker.word.adverb()}.`,
+			() => `${faker.company.catchPhrase()}.`,
+			() =>
+				`${this.capitalize(faker.word.adjective())} ${faker.word.noun()} ${faker.word.verb()} ${faker.word.noun()}.`,
+		];
+
+		const sentences: string[] = [];
+		const count = faker.number.int({ min: 2, max: 4 });
+		for (let i = 0; i < count; i++) {
+			sentences.push(faker.helpers.arrayElement(patterns)());
+		}
+		return sentences.join(" ");
+	}
+
+	/**
+	 * Generate locale-aware urgency phrase.
+	 */
+	private generateUrgency(context: GenerationContext): string {
+		const { faker } = context;
+		const patterns = [
+			() => `${this.capitalize(faker.word.adjective())}!`,
+			() => `${this.capitalize(faker.word.verb())} ${faker.word.adverb()}!`,
+			() => `${this.capitalize(faker.word.adjective())} ${faker.word.noun()}!`,
+		];
+		return faker.helpers.arrayElement(patterns)().toUpperCase();
 	}
 
 	private escapeHtml(text: string): string {

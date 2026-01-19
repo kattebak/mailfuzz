@@ -69,10 +69,7 @@ export class StandardEmailPlugin implements EmailPlugin {
 			`${primaryRecipient.firstName},`,
 		]);
 
-		const bodyParagraphs = faker.lorem.paragraphs({
-			min: 1,
-			max: 3,
-		});
+		const bodyParagraphs = this.generateEmailBody(context);
 
 		const signoff = faker.helpers.arrayElement([
 			"Best",
@@ -130,7 +127,7 @@ ${htmlParagraphs}
 		];
 
 		const response = faker.helpers.arrayElement(responseStarters);
-		const body = faker.lorem.paragraph();
+		const body = this.generateReplyBody(context);
 
 		const signoff = faker.helpers.arrayElement([
 			"Best",
@@ -213,6 +210,64 @@ Subject: ${parentMessage.subject}`;
 		}
 
 		return result;
+	}
+
+	/**
+	 * Generate contextual email body content instead of lorem ipsum.
+	 */
+	private generateEmailBody(context: GenerationContext): string {
+		const { faker } = context;
+
+		const paragraphOptions = [
+			`I wanted to reach out about the ${faker.company.buzzNoun()} we discussed. I've been thinking about it more and have some ideas I'd like to share with you.`,
+			`Hope you're doing well. I've been meaning to follow up on our last conversation about ${faker.company.buzzPhrase()}.`,
+			`Just wanted to check in and see how things are going on your end. I know you've been busy with ${faker.company.buzzNoun()}.`,
+			`I came across something interesting that made me think of our previous discussion. It relates to ${faker.company.catchPhrase().toLowerCase()}.`,
+			`Quick update on my end: things have been progressing well with ${faker.company.buzzNoun()}. I'd love to get your thoughts when you have a moment.`,
+			`I've been reviewing the ${faker.company.buzzNoun()} materials and have some questions. Would you have time to chat this week?`,
+			`Thanks for your patience while I looked into this. I think I have some useful information to share about ${faker.company.buzzNoun()}.`,
+		];
+
+		const followUps = [
+			"Let me know what you think when you get a chance.",
+			"Would be great to catch up soon.",
+			`Happy to discuss further if you're interested.`,
+			"Looking forward to hearing your thoughts.",
+			"No rush on this, just wanted to keep you in the loop.",
+		];
+
+		const paragraphCount = faker.number.int({ min: 1, max: 3 });
+		const paragraphs: string[] = [];
+
+		for (let i = 0; i < paragraphCount; i++) {
+			paragraphs.push(faker.helpers.arrayElement(paragraphOptions));
+		}
+
+		if (faker.datatype.boolean()) {
+			paragraphs.push(faker.helpers.arrayElement(followUps));
+		}
+
+		return paragraphs.join("\n\n");
+	}
+
+	/**
+	 * Generate contextual reply body content.
+	 */
+	private generateReplyBody(context: GenerationContext): string {
+		const { faker } = context;
+
+		const replyBodies = [
+			`I'll take a look at this and get back to you by end of day. If you need anything sooner, just let me know.`,
+			`That's a great point. I hadn't considered that angle before. Let me think about it and we can discuss further.`,
+			`Happy to help with this. I've dealt with similar situations before and have some ideas that might work.`,
+			`I'll check my calendar and send over some times that work. Should be able to find something this week.`,
+			`Sounds good to me. I'll follow up with the team and circle back once I have more information.`,
+			`Thanks for clarifying. That makes more sense now. I'll proceed with the approach you suggested.`,
+			`I agree with your assessment. Let's move forward with the plan and see how it goes.`,
+			`Good question. I'll need to do some digging on my end. Will update you once I know more.`,
+		];
+
+		return faker.helpers.arrayElement(replyBodies);
 	}
 
 	private escapeHtml(text: string): string {

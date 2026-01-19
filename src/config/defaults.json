@@ -4,6 +4,7 @@
 		"seed": 1984,
 		"output": "./maildir",
 		"count": 500,
+
 		"participants": 50,
 		"conversations": 100,
 		"htmlProbability": 0.7,
@@ -12,9 +13,9 @@
 		"allPlugins": true,
 		"fallbackLocale": "en",
 		"locales": {
-			"en": 0.5,
-			"fr": 0.2,
-			"de": 0.2,
+			"en": 0.2,
+			"fr": 0.4,
+			"de": 0.4,
 			"es": 0.1
 		},
 		"quiet": false
