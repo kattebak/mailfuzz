@@ -509,6 +509,7 @@ export class MailfuzzGenerator {
 	/**
 	 * Determine flags for a message based on its date.
 	 * Unread messages are distributed towards the present (more recent = higher chance of unread).
+	 * Uses exponential decay to concentrate unreads in recent past with a long tail.
 	 */
 	private determineFlags(messageDate: Date): MaildirFlag[] {
 		const flags: MaildirFlag[] = [];
@@ -520,15 +521,16 @@ export class MailfuzzGenerator {
 		// Calculate age ratio (0 = newest, 1 = oldest)
 		const ageRatio = totalRange > 0 ? messageAge / totalRange : 0;
 
-		// Use configured unreadProbability with time-weighted distribution
-		// Newer messages are more likely to be unread
-		// recencyWeight: 1.0 for newest, 0.0 for oldest (quadratic decay)
-		const recencyWeight = (1 - ageRatio) ** 2;
+		// Use configured unreadProbability with exponential decay distribution
+		// This creates a strong bias towards recent messages with a long tail
+		// λ = 4 gives ~98% of unreads in the first 50% of time range
+		const decayRate = 4;
+		const recencyWeight = Math.exp(-decayRate * ageRatio);
 		const unreadProbability = this.config.content.unreadProbability ?? 0.2;
 
 		// Effective unread probability: scales with recency
 		// A message at the very end (newest) has full unreadProbability
-		// A message at the very start (oldest) has ~0% chance of being unread
+		// Older messages have exponentially decreasing probability (but never zero)
 		const effectiveUnreadProb = unreadProbability * recencyWeight;
 
 		const isUnread =

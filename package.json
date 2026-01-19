@@ -11,6 +11,9 @@
 		"url": "git+https://github.com/kattebak/mailfuzz.git"
 	},
 	"license": "ISC",
+	"publishConfig": {
+		"access": "public"
+	},
 	"author": "",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -55,6 +58,7 @@
 		"@types/node": "^22.10.5",
 		"@types/nodemailer": "^6.4.17",
 		"@vitest/coverage-v8": "^2.1.8",
+		"semantic-release": "^25.0.2",
 		"tsx": "^4.19.2",
 		"typescript": "^5.7.2",
 		"vitest": "^2.1.8",
