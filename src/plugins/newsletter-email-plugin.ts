@@ -109,7 +109,6 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 	): Publication {
 		const { faker, pluginConfig } = context;
 
-		// biome-ignore lint/complexity/useLiteralKeys: TypeScript noPropertyAccessFromIndexSignature requires bracket notation
 		const publicationName = pluginConfig?.["publicationName"];
 		if (publicationName && typeof publicationName === "string") {
 			const name = publicationName;
@@ -229,7 +228,6 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 	): string {
 		const { faker, pluginConfig } = context;
 
-		// biome-ignore lint/complexity/useLiteralKeys: TypeScript noPropertyAccessFromIndexSignature requires bracket notation
 		const issueFormat = (pluginConfig?.["issueFormat"] as string) ?? "both";
 
 		const patterns = {

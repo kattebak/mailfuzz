@@ -466,7 +466,6 @@ To stop receiving these emails, click here.`;
 	private generateMalware(context: GenerationContext): EmailContent {
 		const { faker, requestHtml, pluginConfig } = context;
 
-		// biome-ignore lint/complexity/useLiteralKeys: TypeScript noPropertyAccessFromIndexSignature requires bracket notation
 		const includeAttachments = pluginConfig?.["includeAttachments"] === true;
 
 		const invoiceNum = `INV-${faker.date.recent().getFullYear()}-${faker.string.numeric(4)}`;

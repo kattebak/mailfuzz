@@ -73,5 +73,33 @@
 		{
 			"text": "Ensure Zod validation is used at system boundaries"
 		}
+	],
+
+	"github.copilot.chat.terminalChatAutoApprove.commands": [
+		"sed",
+		"awk",
+		"grep",
+		"find",
+		"cat",
+		"head",
+		"tail",
+		"wc",
+		"sort",
+		"uniq",
+		"cut",
+		"tr",
+		"xargs",
+		"ls",
+		"rm",
+		"mv",
+		"cp",
+		"mkdir",
+		"touch",
+		"chmod",
+		"chown",
+		"diff",
+		"echo",
+		"printf",
+		"tee"
 	]
 }

@@ -86,8 +86,17 @@ export interface GenerationContext {
 	/**
 	 * Seeded Faker instance for deterministic generation.
 	 * All random values MUST come from this instance.
+	 * The Faker instance is pre-configured with the selected locale.
 	 */
 	faker: Faker;
+
+	/**
+	 * The Faker.js locale code selected for this message.
+	 * Plugins can use this for locale-aware content decisions.
+	 * @example 'de', 'fr', 'en_US'
+	 * @default 'en'
+	 */
+	locale: string;
 
 	/**
 	 * Is the engine requesting reply content?
@@ -187,6 +196,18 @@ export interface EmailContent {
 }
 
 /**
+ * Schema definition for a plugin option.
+ */
+export interface PluginOptionSchema {
+	/** Type of the option value */
+	type: "string" | "number" | "boolean";
+	/** Description shown in help text */
+	description: string;
+	/** Default value if not specified */
+	default?: string | number | boolean;
+}
+
+/**
  * Base interface for all Mailfuzz email generation plugins.
  */
 export interface EmailPlugin {
@@ -221,6 +242,13 @@ export interface EmailPlugin {
 	 * @default 1.0
 	 */
 	readonly defaultWeight?: number;
+
+	/**
+	 * Schema for plugin-specific options.
+	 * Keys are option names (camelCase), values describe the option.
+	 * CLI format: --plugin-opt pluginIdOptionName=value
+	 */
+	readonly options?: Record<string, PluginOptionSchema>;
 
 	/**
 	 * Generate email content for the given context.
@@ -296,6 +324,33 @@ export interface ContentConfig {
 }
 
 /**
+ * Locale weight configuration.
+ * Keys are Faker.js locale codes (e.g., 'en', 'de', 'fr', 'de_AT').
+ * Values are relative weights (will be normalized to sum to 1.0).
+ * @example { en: 0.7, de: 0.2, fr: 0.1 }
+ */
+export type LocaleWeights = Record<string, number>;
+
+/**
+ * Locale configuration for email generation.
+ */
+export interface LocaleConfig {
+	/**
+	 * Locale weights for distribution.
+	 * Keys are Faker.js locale codes, values are relative weights.
+	 * If empty or undefined, defaults to { en: 1.0 }
+	 * @example { en: 0.7, de: 0.2, fr: 0.1 }
+	 */
+	weights: LocaleWeights;
+
+	/**
+	 * Fallback locale when primary locale lacks data.
+	 * @default 'en'
+	 */
+	fallbackLocale?: string;
+}
+
+/**
  * Complete Mailfuzz configuration schema.
  */
 export interface MailfuzzConfig {
@@ -304,6 +359,8 @@ export interface MailfuzzConfig {
 	time: TimeConfig;
 	plugins: PluginsConfig;
 	content: ContentConfig;
+	/** Locale configuration for multilingual email generation */
+	locale?: LocaleConfig;
 }
 
 /**

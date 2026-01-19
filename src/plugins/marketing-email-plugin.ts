@@ -100,7 +100,6 @@ export class MarketingEmailPlugin implements EmailPlugin {
 	private generateBrand(context: GenerationContext): Brand {
 		const { faker, pluginConfig } = context;
 
-		// biome-ignore lint/complexity/useLiteralKeys: TypeScript noPropertyAccessFromIndexSignature requires bracket notation
 		const brandName = pluginConfig?.["brandName"];
 		if (brandName && typeof brandName === "string") {
 			const name = brandName;
@@ -130,7 +129,6 @@ export class MarketingEmailPlugin implements EmailPlugin {
 				`${this.capitalize(faker.word.verb())} ${faker.helpers.arrayElement(["Fitness", "Wellness", "Active", "Fit"])}`,
 		};
 
-		// biome-ignore lint/complexity/useLiteralKeys: TypeScript noPropertyAccessFromIndexSignature requires bracket notation
 		const nameGenerator = namePatterns[industry] ?? namePatterns["retail"];
 		if (!nameGenerator) {
 			throw new Error(`No name pattern for industry: ${industry}`);

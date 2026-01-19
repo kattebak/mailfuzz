@@ -8,6 +8,7 @@ import {
 	validateWeight,
 } from "../plugins/plugin-interface.js";
 import { StandardEmailPlugin } from "../plugins/standard-email-plugin.js";
+import type { LocaleWeights } from "../types.js";
 import type {
 	ContentConfig,
 	EmailPlugin,
@@ -20,6 +21,7 @@ import type {
 	TimeConfig,
 } from "../types.js";
 import { ConversationManager } from "./conversation-manager.js";
+import { LocaleManager } from "./locale-manager.js";
 import { MessageFactory } from "./message-factory.js";
 import { ParticipantPool } from "./participant-pool.js";
 
@@ -63,9 +65,21 @@ export interface MailfuzzGeneratorOptions {
 	endDate?: Date;
 	plugins?: EmailPlugin[];
 	pluginWeights?: Record<string, number>;
+	/** Plugin-specific options. Keys are plugin IDs, values are option objects. */
+	pluginOptions?: Record<string, Record<string, unknown>>;
 	htmlProbability?: number;
 	replyProbability?: number;
 	forwardProbability?: number;
+	/**
+	 * Locale weights for distribution.
+	 * @example { en: 0.7, de: 0.2, fr: 0.1 }
+	 */
+	locales?: LocaleWeights;
+	/**
+	 * Fallback locale when primary locale lacks data.
+	 * @default 'en'
+	 */
+	fallbackLocale?: string;
 }
 
 /**
@@ -76,20 +90,29 @@ export class MailfuzzGenerator {
 	private readonly config: MailfuzzConfig;
 	private readonly plugins: Map<string, EmailPlugin> = new Map();
 	private pluginWeights: Record<string, number>;
+	private readonly pluginOptions: Record<string, Record<string, unknown>>;
 	private readonly participantPool: ParticipantPool;
 	private readonly conversationManager: ConversationManager;
 	private readonly messageFactory: MessageFactory;
+	private readonly localeManager: LocaleManager;
 
 	constructor(options: MailfuzzGeneratorOptions = {}) {
 		// Build config from options and defaults
 		this.config = this.buildConfig(options);
 
-		// Create an independent seeded Faker instance
+		// Initialize locale manager
+		this.localeManager = new LocaleManager(
+			options.locales,
+			options.fallbackLocale,
+		);
+
+		// Create an independent seeded Faker instance (for non-locale-specific operations)
 		this.faker = new Faker({ locale: [en] });
 		this.faker.seed(this.config.generation.seed);
 
-		// Store plugin weights
+		// Store plugin weights and options
 		this.pluginWeights = options.pluginWeights ?? {};
+		this.pluginOptions = options.pluginOptions ?? {};
 
 		// Register plugins
 		const providedPlugins = options.plugins ?? [new StandardEmailPlugin()];
@@ -357,6 +380,14 @@ export class MailfuzzGenerator {
 	): GenerationContext {
 		const isReply = messageType === "reply";
 		const isForward = messageType === "forward";
+
+		// Select locale for this message and create locale-configured Faker
+		const locale = this.localeManager.selectLocale(this.faker);
+		const localeFaker = this.localeManager.createFakerInstance(
+			locale,
+			this.faker.number.int({ min: 0, max: 2147483647 }),
+		);
+
 		const requestHtml =
 			plugin.capabilities.supportsHtml &&
 			this.faker.number.float({ min: 0, max: 1 }) <
@@ -401,7 +432,8 @@ export class MailfuzzGenerator {
 		}
 
 		return {
-			faker: this.faker,
+			faker: localeFaker,
+			locale,
 			isReply,
 			isForward,
 			requestHtml,
@@ -409,6 +441,7 @@ export class MailfuzzGenerator {
 			participants: this.participantPool.getAll(),
 			sender,
 			recipients,
+			pluginConfig: this.pluginOptions[plugin.id],
 		};
 	}
 

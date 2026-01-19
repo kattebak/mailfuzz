@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
 import { parseArgs } from "node:util";
+import { AVAILABLE_LOCALES } from "./generator/locale-manager.js";
 import { MailfuzzGenerator } from "./generator/mailfuzz-generator.js";
 import { MaildirWriter } from "./maildir/maildir-writer.js";
 import { ALL_PLUGINS, getPluginsByIds } from "./plugins/index.js";
+import type { LocaleWeights } from "./types.js";
 import { validateMaildir } from "./validation/maildir-validator.js";
 
 const HELP_TEXT = `
@@ -13,12 +15,14 @@ USAGE:
   mailfuzz generate [options]
   mailfuzz validate <maildir-path>
   mailfuzz plugins
+  mailfuzz locales
   mailfuzz --help
 
 COMMANDS:
   generate    Generate emails and write to a maildir
   validate    Validate an existing maildir
   plugins     List available plugins with descriptions
+  locales     List available locale codes
 
 GENERATE OPTIONS:
   -o, --output <path>       Output maildir path (default: ./maildir)
@@ -32,6 +36,7 @@ GENERATE OPTIONS:
   --reply-probability <n>   Probability of reply vs new (default: 0.4)
   --forward-probability <n> Probability of forward (default: 0.1)
   -w, --weight <plugin=n>   Override plugin weight (can be repeated)
+  --plugin-opt <opt=val>    Set plugin option (can be repeated)
   -q, --quiet               Suppress progress output
 
 PLUGIN SELECTION (choose one):
@@ -41,6 +46,19 @@ PLUGIN SELECTION (choose one):
 
   If no plugin option is specified, only the "standard" plugin is used.
 
+LOCALE OPTIONS:
+  --locale <code>           Add a locale with weight 1.0 (can be repeated)
+  --locale-weight <code=n>  Set locale with specific weight (can be repeated)
+  --fallback-locale <code>  Fallback locale for missing data (default: en)
+
+  If no locale option is specified, English (en) is used.
+  Run 'mailfuzz locales' to see available locale codes.
+
+PLUGIN OPTIONS:
+  Format: --plugin-opt pluginIdOptionName=value
+  Plugin options are specified by concatenating the plugin ID and option name.
+  Use 'mailfuzz plugins' to see available options for each plugin.
+
 VALIDATE OPTIONS:
   --skip-content            Skip validating message content (faster)
 
@@ -49,7 +67,12 @@ EXAMPLES:
   mailfuzz generate --seed 12345 -n 1000 --all-plugins
   mailfuzz generate --plugins standard,marketing,newsletter
   mailfuzz generate --plugin standard --plugin spam
+  mailfuzz generate --locale de
+  mailfuzz generate --locale en --locale de --locale fr
+  mailfuzz generate --locale-weight en=0.7 --locale-weight de=0.2 --locale-weight fr=0.1
+  mailfuzz generate --plugin-opt file-uploadMinSizeKb=100 --plugin-opt file-uploadMaxSizeKb=1000
   mailfuzz plugins
+  mailfuzz locales
   mailfuzz validate ./test-maildir
 `;
 
@@ -66,6 +89,9 @@ interface GenerateOptions {
 	forwardProbability: number;
 	pluginWeights: Record<string, number>;
 	pluginIds: string[];
+	pluginOptions: Record<string, Record<string, unknown>>;
+	locales: LocaleWeights;
+	fallbackLocale: string;
 	quiet: boolean;
 }
 
@@ -97,6 +123,150 @@ const parseWeight = (
 		throw new Error(`Weight must be non-negative: ${weight}`);
 	}
 	return { pluginId, weight };
+};
+
+/**
+ * Parse a plugin option from CLI format: pluginIdOptionName=value
+ * The plugin ID uses hyphens, option names use camelCase.
+ * Example: file-uploadMinSizeKb=100 -> { pluginId: "file-upload", optionName: "minSizeKb", value: "100" }
+ */
+const parsePluginOption = (
+	optArg: string,
+): { pluginId: string; optionName: string; value: string } => {
+	const eqIndex = optArg.indexOf("=");
+	if (eqIndex === -1) {
+		throw new Error(
+			`Invalid plugin option format: ${optArg}. Use: pluginIdOptionName=value`,
+		);
+	}
+
+	const key = optArg.slice(0, eqIndex);
+	const value = optArg.slice(eqIndex + 1);
+
+	// Find the split point: look for first uppercase letter that follows a lowercase
+	// This handles: file-uploadMinSizeKb -> file-upload + minSizeKb
+	const match = /^([a-z][a-z0-9-]*)([A-Z].*)$/.exec(key);
+	if (!match) {
+		throw new Error(
+			`Invalid plugin option key: ${key}. Format: pluginIdOptionName (e.g., file-uploadMinSizeKb)`,
+		);
+	}
+
+	const pluginId = match[1] ?? "";
+	const optionNameRaw = match[2] ?? "";
+	// Convert first char to lowercase for option name
+	const optionName =
+		optionNameRaw.charAt(0).toLowerCase() + optionNameRaw.slice(1);
+
+	return { pluginId, optionName, value };
+};
+
+/**
+ * Parse plugin options array into structured object.
+ */
+const parsePluginOptions = (
+	opts: string[] | undefined,
+): Record<string, Record<string, unknown>> => {
+	const result: Record<string, Record<string, unknown>> = {};
+
+	for (const opt of opts ?? []) {
+		const { pluginId, optionName, value } = parsePluginOption(opt);
+
+		if (!result[pluginId]) {
+			result[pluginId] = {};
+		}
+
+		// Try to parse as number or boolean
+		const numValue = Number.parseFloat(value);
+		if (!Number.isNaN(numValue)) {
+			result[pluginId][optionName] = numValue;
+		} else if (value === "true") {
+			result[pluginId][optionName] = true;
+		} else if (value === "false") {
+			result[pluginId][optionName] = false;
+		} else {
+			result[pluginId][optionName] = value;
+		}
+	}
+
+	return result;
+};
+
+/**
+ * Parse locale weight from CLI format: code=weight
+ */
+const parseLocaleWeight = (
+	weightArg: string,
+): { locale: string; weight: number } => {
+	const [locale, weightStr] = weightArg.split("=");
+	if (!locale || !weightStr) {
+		throw new Error(
+			`Invalid locale weight format: ${weightArg}. Use: locale=number (e.g., en=0.7)`,
+		);
+	}
+	const weight = Number.parseFloat(weightStr);
+	if (Number.isNaN(weight)) {
+		throw new Error(`Invalid weight value: ${weightStr}`);
+	}
+	if (weight < 0) {
+		throw new Error(`Weight must be non-negative: ${weight}`);
+	}
+	return { locale, weight };
+};
+
+/**
+ * Validate a locale code and throw a helpful error if invalid.
+ */
+const validateLocaleCode = (locale: string): void => {
+	if (!AVAILABLE_LOCALES.includes(locale)) {
+		const suggestions = AVAILABLE_LOCALES.filter((l) =>
+			l.toLowerCase().startsWith(locale.toLowerCase().slice(0, 2)),
+		).slice(0, 5);
+		const suggestionText =
+			suggestions.length > 0 ? ` Did you mean: ${suggestions.join(", ")}?` : "";
+		throw new Error(
+			`Invalid locale code: '${locale}'.${suggestionText} Run 'mailfuzz locales' to see all available locale codes.`,
+		);
+	}
+};
+
+/**
+ * Parse locale configuration from CLI options.
+ * Supports: --locale code (weight 1.0) | --locale-weight code=weight
+ * Returns default { en: 1.0 } if no locale options provided.
+ */
+const parseLocaleConfig = (
+	locales: string[] | undefined,
+	localeWeights: string[] | undefined,
+	fallbackLocale: string | undefined,
+): { locales: LocaleWeights; fallbackLocale: string } => {
+	const result: LocaleWeights = {};
+
+	// Add locales with default weight 1.0
+	for (const locale of locales ?? []) {
+		validateLocaleCode(locale);
+		result[locale] = 1.0;
+	}
+
+	// Add/override with weighted locales
+	for (const weightArg of localeWeights ?? []) {
+		const { locale, weight } = parseLocaleWeight(weightArg);
+		validateLocaleCode(locale);
+		result[locale] = weight;
+	}
+
+	// Validate fallback locale if provided
+	const fallback = fallbackLocale ?? "en";
+	if (fallbackLocale) {
+		validateLocaleCode(fallbackLocale);
+	}
+
+	// Default to { en: 1.0 } if no locales specified
+	if (Object.keys(result).length === 0) {
+		result["en"] = 1.0;
+	}
+
+	return { locales: result, fallbackLocale: fallback };
 };
 
 /**
@@ -156,6 +326,10 @@ const parseGenerateArgs = (args: string[]): GenerateOptions => {
 			plugins: { type: "string" },
 			"all-plugins": { type: "boolean", default: false },
 			plugin: { type: "string", multiple: true },
+			"plugin-opt": { type: "string", multiple: true },
+			locale: { type: "string", multiple: true },
+			"locale-weight": { type: "string", multiple: true },
+			"fallback-locale": { type: "string" },
 		},
 		allowPositionals: true,
 	});
@@ -177,6 +351,16 @@ const parseGenerateArgs = (args: string[]): GenerateOptions => {
 		values.plugin,
 	);
 
+	// Parse plugin options
+	const pluginOptions = parsePluginOptions(values["plugin-opt"]);
+
+	// Parse locale configuration
+	const { locales, fallbackLocale } = parseLocaleConfig(
+		values.locale,
+		values["locale-weight"],
+		values["fallback-locale"],
+	);
+
 	return {
 		output: values.output ?? "./maildir",
 		count: Number.parseInt(values.count ?? "100", 10),
@@ -194,6 +378,9 @@ const parseGenerateArgs = (args: string[]): GenerateOptions => {
 		),
 		pluginWeights,
 		pluginIds,
+		pluginOptions,
+		locales,
+		fallbackLocale,
 		quiet: values.quiet ?? false,
 	};
 };
@@ -233,6 +420,8 @@ const runGenerate = async (args: string[]): Promise<void> => {
 	log(`Generating ${options.count} emails...\n`);
 	log(`Output: ${options.output}\n`);
 	log(`Plugins: ${plugins.map((p) => p.id).join(", ")}\n`);
+	const localeList = Object.keys(options.locales).join(", ");
+	log(`Locales: ${localeList}\n`);
 	if (options.seed !== undefined) {
 		log(`Seed: ${options.seed}\n`);
 	}
@@ -247,6 +436,9 @@ const runGenerate = async (args: string[]): Promise<void> => {
 		endDate: options.endDate,
 		plugins,
 		pluginWeights: options.pluginWeights,
+		pluginOptions: options.pluginOptions,
+		locales: options.locales,
+		fallbackLocale: options.fallbackLocale,
 		htmlProbability: options.htmlProbability,
 		replyProbability: options.replyProbability,
 		forwardProbability: options.forwardProbability,
@@ -331,8 +523,50 @@ const runListPlugins = (): void => {
 		console.log(`    Description: ${plugin.description}`);
 		console.log(`    Weight: ${plugin.defaultWeight ?? 1.0}`);
 		console.log(`    Capabilities: ${capabilities.join(", ")}`);
+
+		if (plugin.options && Object.keys(plugin.options).length > 0) {
+			console.log("    Options:");
+			for (const [optName, optSchema] of Object.entries(plugin.options)) {
+				const defaultStr =
+					optSchema.default !== undefined
+						? ` (default: ${optSchema.default})`
+						: "";
+				console.log(
+					`      --plugin-opt ${plugin.id}${optName.charAt(0).toUpperCase()}${optName.slice(1)}=<${optSchema.type}>${defaultStr}`,
+				);
+				console.log(`        ${optSchema.description}`);
+			}
+		}
 		console.log();
 	}
+};
+
+const runListLocales = (): void => {
+	console.log("Available locale codes:\n");
+
+	// Group locales by language prefix
+	const grouped: Record<string, string[]> = {};
+	for (const locale of AVAILABLE_LOCALES) {
+		const prefix = locale.split("_")[0] ?? locale;
+		if (!grouped[prefix]) {
+			grouped[prefix] = [];
+		}
+		grouped[prefix].push(locale);
+	}
+
+	// Sort by prefix and display
+	const sortedPrefixes = Object.keys(grouped).sort();
+	for (const prefix of sortedPrefixes) {
+		const locales = grouped[prefix] ?? [];
+		console.log(`  ${locales.join(", ")}`);
+	}
+
+	console.log(`\nTotal: ${AVAILABLE_LOCALES.length} locales\n`);
+	console.log("Usage examples:");
+	console.log("  mailfuzz generate --locale de");
+	console.log(
+		"  mailfuzz generate --locale-weight en=0.7 --locale-weight de=0.3",
+	);
 };
 
 const main = async (): Promise<void> => {
@@ -355,6 +589,9 @@ const main = async (): Promise<void> => {
 			break;
 		case "plugins":
 			runListPlugins();
+			break;
+		case "locales":
+			runListLocales();
 			break;
 		default:
 			console.error(`Unknown command: ${command}`);

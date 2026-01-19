@@ -181,12 +181,12 @@ Mailfuzz uses a plugin architecture for content generation. Plugins declare thei
 
 ### Built-in Plugins
 
-| Plugin | ID | Description |
-| ------ | -- | ----------- |
-| **StandardEmailPlugin** | `standard` | Personal/business correspondence with replies and forwards |
-| **MarketingEmailPlugin** | `marketing` | Promotional emails, product announcements, and loyalty campaigns |
-| **NewsletterEmailPlugin** | `newsletter` | Subscription-based content emails and curated publications |
-| **SpamEmailPlugin** | `spam` | Phishing, scam, and unsolicited email for spam filter testing |
+| Plugin                    | ID            | Description                                                          |
+| ------------------------- | ------------- | -------------------------------------------------------------------- |
+| **StandardEmailPlugin**   | `standard`    | Personal/business correspondence with replies and forwards           |
+| **MarketingEmailPlugin**  | `marketing`   | Promotional emails, product announcements, and loyalty campaigns     |
+| **NewsletterEmailPlugin** | `newsletter`  | Subscription-based content emails and curated publications           |
+| **SpamEmailPlugin**       | `spam`        | Phishing, scam, and unsolicited email for spam filter testing        |
 | **FileUploadEmailPlugin** | `file-upload` | File export notifications, document sharing, and large file delivery |
 
 Use `mailfuzz plugins` to see full details including capabilities and default weights.

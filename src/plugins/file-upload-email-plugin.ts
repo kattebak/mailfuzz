@@ -4,6 +4,7 @@ import type {
 	EmailPlugin,
 	GenerationContext,
 	PluginCapabilities,
+	PluginOptionSchema,
 } from "../types.js";
 
 type FileCategory = "export" | "document" | "report" | "media" | "archive";
@@ -203,6 +204,19 @@ export class FileUploadEmailPlugin implements EmailPlugin {
 		supportsMultipleRecipients: false,
 	};
 
+	readonly options: Record<string, PluginOptionSchema> = {
+		minSizeKb: {
+			type: "number",
+			description: "Minimum attachment size in KB",
+			default: 50,
+		},
+		maxSizeKb: {
+			type: "number",
+			description: "Maximum attachment size in KB",
+			default: 500,
+		},
+	};
+
 	generate(context: GenerationContext): EmailContent {
 		const { isForward, parentMessage } = context;
 
@@ -241,7 +255,7 @@ export class FileUploadEmailPlugin implements EmailPlugin {
 		const filename = template.filenameTemplate(templateContext);
 
 		const attachment = this.generateDummyAttachment(
-			faker,
+			context,
 			filename,
 			template.contentType,
 		);
@@ -321,13 +335,20 @@ Subject: ${parentMessage.subject}`;
 	}
 
 	private generateDummyAttachment(
-		faker: GenerationContext["faker"],
+		context: GenerationContext,
 		filename: string,
 		contentType: string,
 	): Attachment {
-		// Generate a dummy file with realistic-ish size
-		// Real files would be much larger, but we generate small dummy content
-		const sizeKb = faker.number.int({ min: 50, max: 500 });
+		const { faker, pluginConfig } = context;
+
+		// Get size options from plugin config or use defaults
+		const minSizeKbValue = pluginConfig?.["minSizeKb"];
+		const maxSizeKbValue = pluginConfig?.["maxSizeKb"];
+		const minSizeKb = typeof minSizeKbValue === "number" ? minSizeKbValue : 50;
+		const maxSizeKb = typeof maxSizeKbValue === "number" ? maxSizeKbValue : 500;
+
+		// Generate a dummy file with configurable size
+		const sizeKb = faker.number.int({ min: minSizeKb, max: maxSizeKb });
 		const content = Buffer.alloc(sizeKb * 1024, 0);
 
 		// Add a simple header to make it slightly more realistic
