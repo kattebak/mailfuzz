@@ -1,23 +1,58 @@
 {
-  "name": "@kattebak/mailfuzz",
-  "version": "1.0.0",
-  "description": "Producing massive amounts of compliant, fuzzy fake emails.",
-  "homepage": "https://github.com/kattebak/mailfuzz#readme",
-  "bugs": {
-    "url": "https://github.com/kattebak/mailfuzz/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/kattebak/mailfuzz.git"
-  },
-  "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "src/index.ts",
-  "directories": {
-    "doc": "doc"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  }
+	"name": "@kattebak/mailfuzz",
+	"version": "1.0.0",
+	"description": "Producing massive amounts of compliant, fuzzy fake emails.",
+	"homepage": "https://github.com/kattebak/mailfuzz#readme",
+	"bugs": {
+		"url": "https://github.com/kattebak/mailfuzz/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kattebak/mailfuzz.git"
+	},
+	"license": "ISC",
+	"author": "",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"bin": {
+		"mailfuzz": "./dist/cli.js"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": ["dist"],
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsx src/cli.ts",
+		"lint": "biome check --write .",
+		"lint:check": "biome check .",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"typecheck": "tsc --noEmit",
+		"prepublishOnly": "npm run build"
+	},
+	"dependencies": {
+		"@faker-js/faker": "^9.3.0",
+		"mailparser": "^3.7.2",
+		"nodemailer": "^6.9.16",
+		"zod": "^3.24.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/mailparser": "^3.4.6",
+		"@types/node": "^22.10.5",
+		"@types/nodemailer": "^6.4.17",
+		"@vitest/coverage-v8": "^2.1.8",
+		"tsx": "^4.19.2",
+		"typescript": "^5.7.2",
+		"vitest": "^2.1.8"
+	},
+	"engines": {
+		"node": ">=20"
+	}
 }
