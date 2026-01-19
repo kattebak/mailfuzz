@@ -1,0 +1,129 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://mailfuzz.dev/schemas/1.0.0/schema.json",
+	"title": "Mailfuzz Configuration",
+	"description": "Configuration schema for mailfuzz email generator",
+	"$ref": "#/definitions/MailfuzzConfig",
+	"definitions": {
+		"MailfuzzConfig": {
+			"type": "object",
+			"properties": {
+				"$schema": {
+					"type": "string",
+					"description": "JSON Schema URL for IDE support"
+				},
+				"generate": {
+					"type": "object",
+					"properties": {
+						"output": {
+							"type": "string",
+							"description": "Output maildir path"
+						},
+						"count": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"description": "Number of messages to generate"
+						},
+						"seed": {
+							"type": "integer",
+							"description": "Random seed for deterministic generation"
+						},
+						"participants": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"description": "Max participants in pool"
+						},
+						"conversations": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"description": "Max conversation threads"
+						},
+						"startDate": {
+							"type": "string",
+							"description": "Oldest message date (ISO format, default: 30 days ago)"
+						},
+						"endDate": {
+							"type": "string",
+							"description": "Newest message date (ISO format, default: now)"
+						},
+						"htmlProbability": {
+							"type": "number",
+							"minimum": 0,
+							"maximum": 1,
+							"description": "Probability of HTML content (0-1)"
+						},
+						"replyProbability": {
+							"type": "number",
+							"minimum": 0,
+							"maximum": 1,
+							"description": "Probability of reply vs new message (0-1)"
+						},
+						"forwardProbability": {
+							"type": "number",
+							"minimum": 0,
+							"maximum": 1,
+							"description": "Probability of forward (0-1)"
+						},
+						"quiet": {
+							"type": "boolean",
+							"description": "Suppress progress output"
+						},
+						"plugins": {
+							"type": "array",
+							"items": {
+								"type": "string"
+							},
+							"description": "Plugin IDs to use"
+						},
+						"allPlugins": {
+							"type": "boolean",
+							"description": "Use all available plugins"
+						},
+						"pluginWeights": {
+							"type": "object",
+							"additionalProperties": {
+								"type": "number",
+								"minimum": 0
+							},
+							"description": "Override plugin weights"
+						},
+						"pluginOptions": {
+							"type": "object",
+							"additionalProperties": {
+								"type": "object",
+								"additionalProperties": {}
+							},
+							"description": "Plugin-specific options"
+						},
+						"locales": {
+							"type": "object",
+							"additionalProperties": {
+								"type": "number",
+								"exclusiveMinimum": 0
+							},
+							"description": "Locale weights (e.g., { en: 0.7, de: 0.3 })"
+						},
+						"fallbackLocale": {
+							"type": "string",
+							"description": "Fallback locale for missing data"
+						}
+					},
+					"additionalProperties": false,
+					"description": "Generate command configuration"
+				},
+				"validate": {
+					"type": "object",
+					"properties": {
+						"skipContent": {
+							"type": "boolean",
+							"description": "Skip validating message content (faster)"
+						}
+					},
+					"additionalProperties": false,
+					"description": "Validate command configuration"
+				}
+			},
+			"additionalProperties": false
+		}
+	}
+}

@@ -1,6 +1,20 @@
 #!/usr/bin/env node
 
+import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { parseArgs } from "node:util";
+import {
+	type GenerateCliValues,
+	type GenerateConfig,
+	type ValidateCliValues,
+	buildParseArgsOptions,
+	generateCliOptions,
+	getDefaults,
+	mergeGenerateConfig,
+	mergeValidateConfig,
+	resolveConfig,
+	validateCliOptions,
+} from "./config/index.js";
 import { AVAILABLE_LOCALES } from "./generator/locale-manager.js";
 import { MailfuzzGenerator } from "./generator/mailfuzz-generator.js";
 import { MaildirWriter } from "./maildir/maildir-writer.js";
@@ -14,6 +28,7 @@ mailfuzz - Generate RFC-compliant synthetic emails
 USAGE:
   mailfuzz generate [options]
   mailfuzz validate <maildir-path>
+  mailfuzz init [path]
   mailfuzz plugins
   mailfuzz locales
   mailfuzz --help
@@ -21,6 +36,7 @@ USAGE:
 COMMANDS:
   generate    Generate emails and write to a maildir
   validate    Validate an existing maildir
+  init        Create a starter mailfuzz.json config file
   plugins     List available plugins with descriptions
   locales     List available locale codes
 
@@ -38,6 +54,7 @@ GENERATE OPTIONS:
   -w, --weight <plugin=n>   Override plugin weight (can be repeated)
   --plugin-opt <opt=val>    Set plugin option (can be repeated)
   -q, --quiet               Suppress progress output
+  -c, --config <path>       Path to config file (default: auto-detect)
 
 PLUGIN SELECTION (choose one):
   --plugins <list>          Comma-separated list of plugin IDs
@@ -62,6 +79,13 @@ PLUGIN OPTIONS:
 VALIDATE OPTIONS:
   --skip-content            Skip validating message content (faster)
 
+CONFIGURATION:
+  mailfuzz looks for configuration files in the current directory and parent
+  directories. Supported filenames: mailfuzz.json, mailfuzz.jsonc, .mailfuzzrc.json
+
+  CLI options override config file values.
+  Use 'mailfuzz init' to create a starter configuration file.
+
 EXAMPLES:
   mailfuzz generate -o ./test-maildir -n 500
   mailfuzz generate --seed 12345 -n 1000 --all-plugins
@@ -71,12 +95,14 @@ EXAMPLES:
   mailfuzz generate --locale en --locale de --locale fr
   mailfuzz generate --locale-weight en=0.7 --locale-weight de=0.2 --locale-weight fr=0.1
   mailfuzz generate --plugin-opt file-uploadMinSizeKb=100 --plugin-opt file-uploadMaxSizeKb=1000
+  mailfuzz generate --config ./custom-config.json
+  mailfuzz init
   mailfuzz plugins
   mailfuzz locales
   mailfuzz validate ./test-maildir
 `;
 
-interface GenerateOptions {
+interface ResolvedGenerateOptions {
 	output: string;
 	count: number;
 	seed?: number;
@@ -95,123 +121,12 @@ interface GenerateOptions {
 	quiet: boolean;
 }
 
-interface ValidateOptions {
-	path: string;
-	skipContent: boolean;
-}
-
 const parseDate = (value: string): Date => {
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) {
 		throw new Error(`Invalid date: ${value}`);
 	}
 	return date;
-};
-
-const parseWeight = (
-	weightArg: string,
-): { pluginId: string; weight: number } => {
-	const [pluginId, weightStr] = weightArg.split("=");
-	if (!pluginId || !weightStr) {
-		throw new Error(`Invalid weight format: ${weightArg}. Use: plugin=number`);
-	}
-	const weight = Number.parseFloat(weightStr);
-	if (Number.isNaN(weight)) {
-		throw new Error(`Invalid weight value: ${weightStr}`);
-	}
-	if (weight < 0) {
-		throw new Error(`Weight must be non-negative: ${weight}`);
-	}
-	return { pluginId, weight };
-};
-
-/**
- * Parse a plugin option from CLI format: pluginIdOptionName=value
- * The plugin ID uses hyphens, option names use camelCase.
- * Example: file-uploadMinSizeKb=100 -> { pluginId: "file-upload", optionName: "minSizeKb", value: "100" }
- */
-const parsePluginOption = (
-	optArg: string,
-): { pluginId: string; optionName: string; value: string } => {
-	const eqIndex = optArg.indexOf("=");
-	if (eqIndex === -1) {
-		throw new Error(
-			`Invalid plugin option format: ${optArg}. Use: pluginIdOptionName=value`,
-		);
-	}
-
-	const key = optArg.slice(0, eqIndex);
-	const value = optArg.slice(eqIndex + 1);
-
-	// Find the split point: look for first uppercase letter that follows a lowercase
-	// This handles: file-uploadMinSizeKb -> file-upload + minSizeKb
-	const match = /^([a-z][a-z0-9-]*)([A-Z].*)$/.exec(key);
-	if (!match) {
-		throw new Error(
-			`Invalid plugin option key: ${key}. Format: pluginIdOptionName (e.g., file-uploadMinSizeKb)`,
-		);
-	}
-
-	const pluginId = match[1] ?? "";
-	const optionNameRaw = match[2] ?? "";
-	// Convert first char to lowercase for option name
-	const optionName =
-		optionNameRaw.charAt(0).toLowerCase() + optionNameRaw.slice(1);
-
-	return { pluginId, optionName, value };
-};
-
-/**
- * Parse plugin options array into structured object.
- */
-const parsePluginOptions = (
-	opts: string[] | undefined,
-): Record<string, Record<string, unknown>> => {
-	const result: Record<string, Record<string, unknown>> = {};
-
-	for (const opt of opts ?? []) {
-		const { pluginId, optionName, value } = parsePluginOption(opt);
-
-		if (!result[pluginId]) {
-			result[pluginId] = {};
-		}
-
-		// Try to parse as number or boolean
-		const numValue = Number.parseFloat(value);
-		if (!Number.isNaN(numValue)) {
-			result[pluginId][optionName] = numValue;
-		} else if (value === "true") {
-			result[pluginId][optionName] = true;
-		} else if (value === "false") {
-			result[pluginId][optionName] = false;
-		} else {
-			result[pluginId][optionName] = value;
-		}
-	}
-
-	return result;
-};
-
-/**
- * Parse locale weight from CLI format: code=weight
- */
-const parseLocaleWeight = (
-	weightArg: string,
-): { locale: string; weight: number } => {
-	const [locale, weightStr] = weightArg.split("=");
-	if (!locale || !weightStr) {
-		throw new Error(
-			`Invalid locale weight format: ${weightArg}. Use: locale=number (e.g., en=0.7)`,
-		);
-	}
-	const weight = Number.parseFloat(weightStr);
-	if (Number.isNaN(weight)) {
-		throw new Error(`Invalid weight value: ${weightStr}`);
-	}
-	if (weight < 0) {
-		throw new Error(`Weight must be non-negative: ${weight}`);
-	}
-	return { locale, weight };
 };
 
 /**
@@ -231,58 +146,38 @@ const validateLocaleCode = (locale: string): void => {
 };
 
 /**
- * Parse locale configuration from CLI options.
- * Supports: --locale code (weight 1.0) | --locale-weight code=weight
- * Returns default { en: 1.0 } if no locale options provided.
+ * Validate all locale codes in the config.
  */
-const parseLocaleConfig = (
-	locales: string[] | undefined,
-	localeWeights: string[] | undefined,
-	fallbackLocale: string | undefined,
-): { locales: LocaleWeights; fallbackLocale: string } => {
-	const result: LocaleWeights = {};
-
-	// Add locales with default weight 1.0
-	for (const locale of locales ?? []) {
+const validateLocales = (locales: Record<string, number>): void => {
+	for (const locale of Object.keys(locales)) {
 		validateLocaleCode(locale);
-		result[locale] = 1.0;
 	}
-
-	// Add/override with weighted locales
-	for (const weightArg of localeWeights ?? []) {
-		const { locale, weight } = parseLocaleWeight(weightArg);
-		validateLocaleCode(locale);
-		result[locale] = weight;
-	}
-
-	// Validate fallback locale if provided
-	const fallback = fallbackLocale ?? "en";
-	if (fallbackLocale) {
-		validateLocaleCode(fallbackLocale);
-	}
-
-	// Default to { en: 1.0 } if no locales specified
-	if (Object.keys(result).length === 0) {
-		result["en"] = 1.0;
-	}
-
-	return { locales: result, fallbackLocale: fallback };
 };
 
 /**
- * Parse plugin selection from CLI options.
- * Supports: --plugins a,b,c | --all-plugins | --plugin a --plugin b
- * Defaults to ["standard"] if no plugin option is provided.
+ * Validate plugin weight values.
  */
-const parsePluginSelection = (
-	plugins: string | undefined,
-	allPlugins: boolean,
-	plugin: string[] | undefined,
-): string[] => {
+const validatePluginWeights = (
+	weights: Record<string, number> | undefined,
+): void => {
+	if (!weights) return;
+	for (const [pluginId, weight] of Object.entries(weights)) {
+		if (weight < 0) {
+			throw new Error(
+				`Plugin weight must be non-negative: ${pluginId}=${weight}`,
+			);
+		}
+	}
+};
+
+/**
+ * Validate that plugin selection is mutually exclusive.
+ */
+const validatePluginSelection = (cliValues: GenerateCliValues): void => {
 	const optionsUsed = [
-		plugins !== undefined,
-		allPlugins,
-		plugin !== undefined && plugin.length > 0,
+		cliValues.plugins !== undefined,
+		cliValues["all-plugins"] === true,
+		cliValues.plugin !== undefined && cliValues.plugin.length > 0,
 	].filter(Boolean).length;
 
 	if (optionsUsed > 1) {
@@ -290,107 +185,72 @@ const parsePluginSelection = (
 			"Cannot combine --plugins, --all-plugins, and --plugin options. Choose one.",
 		);
 	}
-
-	if (allPlugins) {
-		return ALL_PLUGINS.map((p) => p.id);
-	}
-
-	if (plugins) {
-		return plugins.split(",").map((s) => s.trim());
-	}
-
-	if (plugin && plugin.length > 0) {
-		return plugin;
-	}
-
-	// Default to standard plugin
-	return ["standard"];
 };
 
-const parseGenerateArgs = (args: string[]): GenerateOptions => {
-	const { values } = parseArgs({
-		args,
-		options: {
-			output: { type: "string", short: "o", default: "./maildir" },
-			count: { type: "string", short: "n", default: "100" },
-			seed: { type: "string", short: "s" },
-			participants: { type: "string", short: "p", default: "20" },
-			conversations: { type: "string", default: "30" },
-			"start-date": { type: "string" },
-			"end-date": { type: "string" },
-			"html-probability": { type: "string", default: "0.7" },
-			"reply-probability": { type: "string", default: "0.4" },
-			"forward-probability": { type: "string", default: "0.1" },
-			weight: { type: "string", short: "w", multiple: true },
-			quiet: { type: "boolean", short: "q", default: false },
-			plugins: { type: "string" },
-			"all-plugins": { type: "boolean", default: false },
-			plugin: { type: "string", multiple: true },
-			"plugin-opt": { type: "string", multiple: true },
-			locale: { type: "string", multiple: true },
-			"locale-weight": { type: "string", multiple: true },
-			"fallback-locale": { type: "string" },
-		},
-		allowPositionals: true,
-	});
-
+/**
+ * Convert GenerateConfig to ResolvedGenerateOptions with date parsing.
+ */
+const resolveGenerateOptions = (
+	config: GenerateConfig,
+): ResolvedGenerateOptions => {
 	const now = new Date();
 	const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-	// Parse weight overrides
-	const pluginWeights: Record<string, number> = {};
-	for (const w of values.weight ?? []) {
-		const { pluginId, weight } = parseWeight(w);
-		pluginWeights[pluginId] = weight;
-	}
+	// Validate locales
+	validateLocales(config.locales);
 
-	// Parse plugin selection
-	const pluginIds = parsePluginSelection(
-		values.plugins,
-		values["all-plugins"] ?? false,
-		values.plugin,
-	);
+	// Validate fallback locale
+	validateLocaleCode(config.fallbackLocale);
 
-	// Parse plugin options
-	const pluginOptions = parsePluginOptions(values["plugin-opt"]);
+	// Validate plugin weights
+	validatePluginWeights(config.pluginWeights);
 
-	// Parse locale configuration
-	const { locales, fallbackLocale } = parseLocaleConfig(
-		values.locale,
-		values["locale-weight"],
-		values["fallback-locale"],
-	);
+	// Resolve plugins
+	const pluginIds = config.allPlugins
+		? ALL_PLUGINS.map((p) => p.id)
+		: config.plugins;
 
 	return {
-		output: values.output ?? "./maildir",
-		count: Number.parseInt(values.count ?? "100", 10),
-		seed: values.seed ? Number.parseInt(values.seed, 10) : undefined,
-		participants: Number.parseInt(values.participants ?? "20", 10),
-		conversations: Number.parseInt(values.conversations ?? "30", 10),
-		startDate: values["start-date"]
-			? parseDate(values["start-date"])
-			: thirtyDaysAgo,
-		endDate: values["end-date"] ? parseDate(values["end-date"]) : now,
-		htmlProbability: Number.parseFloat(values["html-probability"] ?? "0.7"),
-		replyProbability: Number.parseFloat(values["reply-probability"] ?? "0.4"),
-		forwardProbability: Number.parseFloat(
-			values["forward-probability"] ?? "0.1",
-		),
-		pluginWeights,
+		output: config.output,
+		count: config.count,
+		seed: config.seed,
+		participants: config.participants,
+		conversations: config.conversations,
+		startDate: config.startDate ? parseDate(config.startDate) : thirtyDaysAgo,
+		endDate: config.endDate ? parseDate(config.endDate) : now,
+		htmlProbability: config.htmlProbability,
+		replyProbability: config.replyProbability,
+		forwardProbability: config.forwardProbability,
+		pluginWeights: config.pluginWeights ?? {},
 		pluginIds,
-		pluginOptions,
-		locales,
-		fallbackLocale,
-		quiet: values.quiet ?? false,
+		pluginOptions: config.pluginOptions ?? {},
+		locales: config.locales,
+		fallbackLocale: config.fallbackLocale,
+		quiet: config.quiet,
 	};
 };
 
-const parseValidateArgs = (args: string[]): ValidateOptions => {
+const parseGenerateArgs = (
+	args: string[],
+): { cliValues: GenerateCliValues; configPath?: string } => {
+	const { values } = parseArgs({
+		args,
+		options: buildParseArgsOptions(generateCliOptions),
+		allowPositionals: true,
+	});
+
+	return {
+		cliValues: values as GenerateCliValues,
+		configPath: values["config"] as string | undefined,
+	};
+};
+
+const parseValidateArgs = (
+	args: string[],
+): { cliValues: ValidateCliValues; path: string; configPath?: string } => {
 	const { values, positionals } = parseArgs({
 		args,
-		options: {
-			"skip-content": { type: "boolean", default: false },
-		},
+		options: buildParseArgsOptions(validateCliOptions),
 		allowPositionals: true,
 	});
 
@@ -400,13 +260,22 @@ const parseValidateArgs = (args: string[]): ValidateOptions => {
 	}
 
 	return {
+		cliValues: values as ValidateCliValues,
 		path: maildirPath,
-		skipContent: values["skip-content"] ?? false,
+		configPath: values["config"] as string | undefined,
 	};
 };
 
 const runGenerate = async (args: string[]): Promise<void> => {
-	const options = parseGenerateArgs(args);
+	const { cliValues, configPath } = parseGenerateArgs(args);
+
+	// Validate mutually exclusive plugin options
+	validatePluginSelection(cliValues);
+
+	// Load and merge configuration
+	const { config, configPath: foundConfigPath } = resolveConfig(configPath);
+	const mergedConfig = mergeGenerateConfig(config, cliValues);
+	const options = resolveGenerateOptions(mergedConfig);
 
 	// Resolve plugins from IDs
 	const plugins = getPluginsByIds(options.pluginIds);
@@ -416,6 +285,10 @@ const runGenerate = async (args: string[]): Promise<void> => {
 			process.stderr.write(msg);
 		}
 	};
+
+	if (foundConfigPath && !options.quiet) {
+		log(`Using config: ${foundConfigPath}\n`);
+	}
 
 	log(`Generating ${options.count} emails...\n`);
 	log(`Output: ${options.output}\n`);
@@ -475,15 +348,19 @@ const runGenerate = async (args: string[]): Promise<void> => {
 };
 
 const runValidate = async (args: string[]): Promise<void> => {
-	const options = parseValidateArgs(args);
+	const { cliValues, path, configPath } = parseValidateArgs(args);
 
-	console.error(`Validating maildir: ${options.path}`);
+	// Load and merge configuration
+	const { config } = resolveConfig(configPath);
+	const mergedConfig = mergeValidateConfig(config, cliValues);
+
+	console.error(`Validating maildir: ${path}`);
 	console.error(
-		`Content validation: ${options.skipContent ? "disabled" : "enabled"}`,
+		`Content validation: ${mergedConfig.skipContent ? "disabled" : "enabled"}`,
 	);
 	console.error();
 
-	const result = await validateMaildir(options.path, !options.skipContent);
+	const result = await validateMaildir(path, !mergedConfig.skipContent);
 
 	console.log(`Valid: ${result.valid ? "yes" : "no"}`);
 	console.log(`Messages: ${result.messageCount}`);
@@ -503,6 +380,21 @@ const runValidate = async (args: string[]): Promise<void> => {
 	}
 
 	process.exit(result.valid ? 0 : 1);
+};
+
+const runInit = (args: string[]): void => {
+	const targetPath = args[0] ?? "mailfuzz.json";
+	const fullPath = resolve(targetPath);
+
+	const defaults = getDefaults();
+	const configContent = {
+		$schema: "https://mailfuzz.dev/schemas/1.0.0/schema.json",
+		...defaults,
+	};
+
+	writeFileSync(fullPath, JSON.stringify(configContent, null, "\t"));
+	console.log(`Created config file: ${fullPath}`);
+	console.log("\nYou can now customize this file and run 'mailfuzz generate'");
 };
 
 const runListPlugins = (): void => {
@@ -586,6 +478,9 @@ const main = async (): Promise<void> => {
 			break;
 		case "validate":
 			await runValidate(commandArgs);
+			break;
+		case "init":
+			runInit(commandArgs);
 			break;
 		case "plugins":
 			runListPlugins();

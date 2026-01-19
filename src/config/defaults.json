@@ -1,0 +1,22 @@
+{
+	"$schema": "./schema.json",
+	"generate": {
+		"output": "./maildir",
+		"count": 100,
+		"participants": 20,
+		"conversations": 30,
+		"htmlProbability": 0.7,
+		"replyProbability": 0.4,
+		"forwardProbability": 0.1,
+		"plugins": ["standard"],
+		"allPlugins": false,
+		"fallbackLocale": "en",
+		"locales": {
+			"en": 1.0
+		},
+		"quiet": false
+	},
+	"validate": {
+		"skipContent": false
+	}
+}
