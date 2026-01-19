@@ -50,6 +50,8 @@ interface LinkItem {
 export class NewsletterEmailPlugin implements EmailPlugin {
 	readonly id = "newsletter";
 	readonly name = "Newsletter Email";
+	readonly description =
+		"Subscription-based content emails and curated publications";
 	readonly defaultWeight = 0.25;
 
 	readonly capabilities: PluginCapabilities = {

@@ -50,6 +50,8 @@ const INDUSTRIES = [
 export class MarketingEmailPlugin implements EmailPlugin {
 	readonly id = "marketing";
 	readonly name = "Marketing Email";
+	readonly description =
+		"Promotional emails, product announcements, and loyalty campaigns";
 	readonly defaultWeight = 0.5;
 
 	readonly capabilities: PluginCapabilities = {

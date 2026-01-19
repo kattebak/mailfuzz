@@ -3,7 +3,7 @@
 import { parseArgs } from "node:util";
 import { MailfuzzGenerator } from "./generator/mailfuzz-generator.js";
 import { MaildirWriter } from "./maildir/maildir-writer.js";
-import { StandardEmailPlugin } from "./plugins/standard-email-plugin.js";
+import { ALL_PLUGINS, getPluginsByIds } from "./plugins/index.js";
 import { validateMaildir } from "./validation/maildir-validator.js";
 
 const HELP_TEXT = `
@@ -12,11 +12,13 @@ mailfuzz - Generate RFC-compliant synthetic emails
 USAGE:
   mailfuzz generate [options]
   mailfuzz validate <maildir-path>
+  mailfuzz plugins
   mailfuzz --help
 
 COMMANDS:
   generate    Generate emails and write to a maildir
   validate    Validate an existing maildir
+  plugins     List available plugins with descriptions
 
 GENERATE OPTIONS:
   -o, --output <path>       Output maildir path (default: ./maildir)
@@ -32,12 +34,22 @@ GENERATE OPTIONS:
   -w, --weight <plugin=n>   Override plugin weight (can be repeated)
   -q, --quiet               Suppress progress output
 
+PLUGIN SELECTION (choose one):
+  --plugins <list>          Comma-separated list of plugin IDs
+  --all-plugins             Use all available plugins
+  --plugin <name>           Add a plugin (can be repeated)
+
+  If no plugin option is specified, only the "standard" plugin is used.
+
 VALIDATE OPTIONS:
   --skip-content            Skip validating message content (faster)
 
 EXAMPLES:
   mailfuzz generate -o ./test-maildir -n 500
-  mailfuzz generate --seed 12345 -n 1000
+  mailfuzz generate --seed 12345 -n 1000 --all-plugins
+  mailfuzz generate --plugins standard,marketing,newsletter
+  mailfuzz generate --plugin standard --plugin spam
+  mailfuzz plugins
   mailfuzz validate ./test-maildir
 `;
 
@@ -53,6 +65,7 @@ interface GenerateOptions {
 	replyProbability: number;
 	forwardProbability: number;
 	pluginWeights: Record<string, number>;
+	pluginIds: string[];
 	quiet: boolean;
 }
 
@@ -86,6 +99,44 @@ const parseWeight = (
 	return { pluginId, weight };
 };
 
+/**
+ * Parse plugin selection from CLI options.
+ * Supports: --plugins a,b,c | --all-plugins | --plugin a --plugin b
+ * Defaults to ["standard"] if no plugin option is provided.
+ */
+const parsePluginSelection = (
+	plugins: string | undefined,
+	allPlugins: boolean,
+	plugin: string[] | undefined,
+): string[] => {
+	const optionsUsed = [
+		plugins !== undefined,
+		allPlugins,
+		plugin !== undefined && plugin.length > 0,
+	].filter(Boolean).length;
+
+	if (optionsUsed > 1) {
+		throw new Error(
+			"Cannot combine --plugins, --all-plugins, and --plugin options. Choose one.",
+		);
+	}
+
+	if (allPlugins) {
+		return ALL_PLUGINS.map((p) => p.id);
+	}
+
+	if (plugins) {
+		return plugins.split(",").map((s) => s.trim());
+	}
+
+	if (plugin && plugin.length > 0) {
+		return plugin;
+	}
+
+	// Default to standard plugin
+	return ["standard"];
+};
+
 const parseGenerateArgs = (args: string[]): GenerateOptions => {
 	const { values } = parseArgs({
 		args,
@@ -102,6 +153,9 @@ const parseGenerateArgs = (args: string[]): GenerateOptions => {
 			"forward-probability": { type: "string", default: "0.1" },
 			weight: { type: "string", short: "w", multiple: true },
 			quiet: { type: "boolean", short: "q", default: false },
+			plugins: { type: "string" },
+			"all-plugins": { type: "boolean", default: false },
+			plugin: { type: "string", multiple: true },
 		},
 		allowPositionals: true,
 	});
@@ -115,6 +169,13 @@ const parseGenerateArgs = (args: string[]): GenerateOptions => {
 		const { pluginId, weight } = parseWeight(w);
 		pluginWeights[pluginId] = weight;
 	}
+
+	// Parse plugin selection
+	const pluginIds = parsePluginSelection(
+		values.plugins,
+		values["all-plugins"] ?? false,
+		values.plugin,
+	);
 
 	return {
 		output: values.output ?? "./maildir",
@@ -132,6 +193,7 @@ const parseGenerateArgs = (args: string[]): GenerateOptions => {
 			values["forward-probability"] ?? "0.1",
 		),
 		pluginWeights,
+		pluginIds,
 		quiet: values.quiet ?? false,
 	};
 };
@@ -159,6 +221,9 @@ const parseValidateArgs = (args: string[]): ValidateOptions => {
 const runGenerate = async (args: string[]): Promise<void> => {
 	const options = parseGenerateArgs(args);
 
+	// Resolve plugins from IDs
+	const plugins = getPluginsByIds(options.pluginIds);
+
 	const log = (msg: string) => {
 		if (!options.quiet) {
 			process.stderr.write(msg);
@@ -167,6 +232,7 @@ const runGenerate = async (args: string[]): Promise<void> => {
 
 	log(`Generating ${options.count} emails...\n`);
 	log(`Output: ${options.output}\n`);
+	log(`Plugins: ${plugins.map((p) => p.id).join(", ")}\n`);
 	if (options.seed !== undefined) {
 		log(`Seed: ${options.seed}\n`);
 	}
@@ -179,7 +245,7 @@ const runGenerate = async (args: string[]): Promise<void> => {
 		maxConversations: options.conversations,
 		startDate: options.startDate,
 		endDate: options.endDate,
-		plugins: [new StandardEmailPlugin()],
+		plugins,
 		pluginWeights: options.pluginWeights,
 		htmlProbability: options.htmlProbability,
 		replyProbability: options.replyProbability,
@@ -247,6 +313,28 @@ const runValidate = async (args: string[]): Promise<void> => {
 	process.exit(result.valid ? 0 : 1);
 };
 
+const runListPlugins = (): void => {
+	console.log("Available plugins:\n");
+
+	for (const plugin of ALL_PLUGINS) {
+		const capabilities: string[] = [];
+		if (plugin.capabilities.canBeOriginal ?? true)
+			capabilities.push("original");
+		if (plugin.capabilities.canBeReply) capabilities.push("reply");
+		if (plugin.capabilities.canBeForward) capabilities.push("forward");
+		if (plugin.capabilities.supportsHtml) capabilities.push("html");
+		if (plugin.capabilities.supportsAttachments)
+			capabilities.push("attachments");
+
+		console.log(`  ${plugin.id}`);
+		console.log(`    Name: ${plugin.name}`);
+		console.log(`    Description: ${plugin.description}`);
+		console.log(`    Weight: ${plugin.defaultWeight ?? 1.0}`);
+		console.log(`    Capabilities: ${capabilities.join(", ")}`);
+		console.log();
+	}
+};
+
 const main = async (): Promise<void> => {
 	const args = process.argv.slice(2);
 
@@ -264,6 +352,9 @@ const main = async (): Promise<void> => {
 			break;
 		case "validate":
 			await runValidate(commandArgs);
+			break;
+		case "plugins":
+			runListPlugins();
 			break;
 		default:
 			console.error(`Unknown command: ${command}`);

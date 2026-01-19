@@ -30,6 +30,15 @@ npx mailfuzz generate -o ./maildir -n 100
 # Reproducible generation with seed
 npx mailfuzz generate -o ./test-maildir -n 500 --seed 12345
 
+# Use all available plugins
+npx mailfuzz generate -n 100 --all-plugins
+
+# Use specific plugins
+npx mailfuzz generate -n 100 --plugins standard,marketing,spam
+
+# List available plugins
+npx mailfuzz plugins
+
 # Validate an existing maildir
 npx mailfuzz validate ./maildir
 ```
@@ -37,16 +46,20 @@ npx mailfuzz validate ./maildir
 ### Library Usage
 
 ```typescript
-import { MailfuzzGenerator, MaildirWriter, StandardEmailPlugin } from '@kattebak/mailfuzz';
+import {
+  MailfuzzGenerator,
+  MaildirWriter,
+  StandardEmailPlugin,
+} from "@kattebak/mailfuzz";
 
 const generator = new MailfuzzGenerator({
   seed: 12345,
   messageCount: 100,
-  plugins: [new StandardEmailPlugin()]
+  plugins: [new StandardEmailPlugin()],
 });
 
 // Write to maildir
-const writer = new MaildirWriter('./output-maildir');
+const writer = new MaildirWriter("./output-maildir");
 const result = await writer.writeFromGenerator(generator.stream());
 
 console.log(`Generated ${result.totalWritten} messages`);
@@ -61,6 +74,7 @@ console.log(message.subject, message.from.email);
 ```
 mailfuzz generate [options]
 mailfuzz validate <maildir-path>
+mailfuzz plugins
 
 GENERATE OPTIONS:
   -o, --output <path>       Output maildir path (default: ./maildir)
@@ -73,7 +87,15 @@ GENERATE OPTIONS:
   --html-probability <n>    Probability of HTML content 0-1 (default: 0.7)
   --reply-probability <n>   Probability of reply vs new (default: 0.4)
   --forward-probability <n> Probability of forward (default: 0.1)
+  -w, --weight <plugin=n>   Override plugin weight (can be repeated)
   -q, --quiet               Suppress progress output
+
+PLUGIN SELECTION (choose one):
+  --plugins <list>          Comma-separated list of plugin IDs
+  --all-plugins             Use all available plugins
+  --plugin <name>           Add a plugin (can be repeated)
+
+  If no plugin option is specified, only the "standard" plugin is used.
 
 VALIDATE OPTIONS:
   --skip-content            Skip validating message content (faster)
@@ -86,20 +108,20 @@ VALIDATE OPTIONS:
 The main orchestrator for email generation.
 
 ```typescript
-import { MailfuzzGenerator } from '@kattebak/mailfuzz';
+import { MailfuzzGenerator } from "@kattebak/mailfuzz";
 
 const generator = new MailfuzzGenerator({
-  seed: 12345,                // Random seed for determinism
-  messageCount: 100,          // Total messages to generate
-  maxParticipants: 20,        // Size of fake participant pool
-  maxConversations: 30,       // Max concurrent threads
-  startDate: new Date('2024-01-01'),
-  endDate: new Date('2024-01-31'),
-  htmlProbability: 0.7,       // Chance of HTML content
-  replyProbability: 0.4,      // Chance of reply vs new
-  forwardProbability: 0.1,    // Chance of forward
+  seed: 12345, // Random seed for determinism
+  messageCount: 100, // Total messages to generate
+  maxParticipants: 20, // Size of fake participant pool
+  maxConversations: 30, // Max concurrent threads
+  startDate: new Date("2024-01-01"),
+  endDate: new Date("2024-01-31"),
+  htmlProbability: 0.7, // Chance of HTML content
+  replyProbability: 0.4, // Chance of reply vs new
+  forwardProbability: 0.1, // Chance of forward
   plugins: [new StandardEmailPlugin()],
-  pluginWeights: { standard: 1.0 }
+  pluginWeights: { standard: 1.0 },
 });
 
 // Stream messages one at a time
@@ -116,14 +138,13 @@ const messages = await generator.generateAll();
 Writes messages to Maildir format with atomic operations.
 
 ```typescript
-import { MaildirWriter } from '@kattebak/mailfuzz';
+import { MaildirWriter } from "@kattebak/mailfuzz";
 
-const writer = new MaildirWriter('./maildir');
+const writer = new MaildirWriter("./maildir");
 
 // Write from generator
-const result = await writer.writeFromGenerator(
-  generator.stream(),
-  (count) => console.log(`Progress: ${count}`)
+const result = await writer.writeFromGenerator(generator.stream(), (count) =>
+  console.log(`Progress: ${count}`),
 );
 
 // Or write a batch
@@ -132,9 +153,9 @@ const result = await writer.writeMessages(messages);
 
 console.log({
   total: result.totalWritten,
-  unread: result.newMessages,  // in new/
-  read: result.curMessages,    // in cur/
-  errors: result.errors
+  unread: result.newMessages, // in new/
+  read: result.curMessages, // in cur/
+  errors: result.errors,
 });
 ```
 
@@ -143,10 +164,10 @@ console.log({
 Validate generated emails and maildir structure.
 
 ```typescript
-import { validateMaildir, validateMessage } from '@kattebak/mailfuzz';
+import { validateMaildir, validateMessage } from "@kattebak/mailfuzz";
 
 // Validate entire maildir
-const result = await validateMaildir('./maildir', true);
+const result = await validateMaildir("./maildir", true);
 console.log(result.valid, result.messageCount, result.errors);
 
 // Validate single message
@@ -160,27 +181,37 @@ Mailfuzz uses a plugin architecture for content generation. Plugins declare thei
 
 ### Built-in Plugins
 
-**StandardEmailPlugin** - Personal/business correspondence with full capabilities:
-- Original emails, replies, and forwards
-- HTML and plain text content
-- Realistic subject lines and body content
+| Plugin | ID | Description |
+| ------ | -- | ----------- |
+| **StandardEmailPlugin** | `standard` | Personal/business correspondence with replies and forwards |
+| **MarketingEmailPlugin** | `marketing` | Promotional emails, product announcements, and loyalty campaigns |
+| **NewsletterEmailPlugin** | `newsletter` | Subscription-based content emails and curated publications |
+| **SpamEmailPlugin** | `spam` | Phishing, scam, and unsolicited email for spam filter testing |
+| **FileUploadEmailPlugin** | `file-upload` | File export notifications, document sharing, and large file delivery |
+
+Use `mailfuzz plugins` to see full details including capabilities and default weights.
 
 ### Creating Custom Plugins
 
 ```typescript
-import type { EmailPlugin, PluginCapabilities, GenerationContext, EmailContent } from '@kattebak/mailfuzz';
+import type {
+  EmailPlugin,
+  PluginCapabilities,
+  GenerationContext,
+  EmailContent,
+} from "@kattebak/mailfuzz";
 
 class MarketingPlugin implements EmailPlugin {
-  readonly id = 'marketing';
-  readonly name = 'Marketing Newsletter';
+  readonly id = "marketing";
+  readonly name = "Marketing Newsletter";
 
   readonly capabilities: PluginCapabilities = {
-    canBeReply: false,      // Marketing emails are never replies
-    canBeForward: false,    // Or forwards
+    canBeReply: false, // Marketing emails are never replies
+    canBeForward: false, // Or forwards
     canBeOriginal: true,
     supportsHtml: true,
     supportsAttachments: false,
-    supportsMultipleRecipients: false
+    supportsMultipleRecipients: false,
   };
 
   generate(context: GenerationContext): EmailContent {
@@ -189,7 +220,7 @@ class MarketingPlugin implements EmailPlugin {
     return {
       subject: `🎉 ${faker.number.int({ min: 10, max: 50 })}% off everything!`,
       text: `Shop now at ${faker.internet.url()}`,
-      html: `<h1>Big Sale!</h1><p>Shop now!</p>`
+      html: `<h1>Big Sale!</h1><p>Shop now!</p>`,
     };
   }
 }
@@ -197,19 +228,19 @@ class MarketingPlugin implements EmailPlugin {
 // Use custom plugin
 const generator = new MailfuzzGenerator({
   plugins: [new StandardEmailPlugin(), new MarketingPlugin()],
-  pluginWeights: { standard: 0.7, marketing: 0.3 }
+  pluginWeights: { standard: 0.7, marketing: 0.3 },
 });
 ```
 
 ### Plugin Capabilities
 
-| Capability | Description |
-|------------|-------------|
-| `canBeReply` | Can generate reply content |
-| `canBeForward` | Can generate forward content |
-| `canBeOriginal` | Can generate new conversations (default: true) |
-| `supportsHtml` | Can generate HTML content |
-| `supportsAttachments` | Can include attachments |
+| Capability                   | Description                                     |
+| ---------------------------- | ----------------------------------------------- |
+| `canBeReply`                 | Can generate reply content                      |
+| `canBeForward`               | Can generate forward content                    |
+| `canBeOriginal`              | Can generate new conversations (default: true)  |
+| `supportsHtml`               | Can generate HTML content                       |
+| `supportsAttachments`        | Can include attachments                         |
 | `supportsMultipleRecipients` | Can address multiple recipients (default: true) |
 
 ## Maildir Format
@@ -233,14 +264,14 @@ Example: `1705594200.M654321P12345Q1.localhost,S=4096:2,RS`
 
 ### Message Flags
 
-| Flag | Meaning |
-|------|---------|
-| D | Draft |
-| F | Flagged |
-| P | Passed (forwarded) |
-| R | Replied |
-| S | Seen |
-| T | Trashed |
+| Flag | Meaning            |
+| ---- | ------------------ |
+| D    | Draft              |
+| F    | Flagged            |
+| P    | Passed (forwarded) |
+| R    | Replied            |
+| S    | Seen               |
+| T    | Trashed            |
 
 ## Deterministic Generation
 
@@ -277,6 +308,29 @@ npm run lint
 # Build
 npm run build
 ```
+
+## QA Testing with Dovecot
+
+Test generated emails in a real IMAP client:
+
+```bash
+# Generate test emails
+npm run dev -- generate -o ./maildir -n 100 --seed 12345
+
+# Start local IMAP server (requires Docker/Podman)
+npm run qa:start
+
+# Connect any IMAP client to localhost:1143
+# Username: testuser, Password: testpass
+
+# View server logs
+npm run qa:logs
+
+# Stop server
+npm run qa:stop
+```
+
+See [qa/README.md](qa/README.md) for detailed setup instructions.
 
 ## License
 

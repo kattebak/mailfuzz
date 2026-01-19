@@ -50,6 +50,8 @@ const SUSPICIOUS_TLDS = ["net", "info", "co", "click", "xyz", "top", "online"];
 export class SpamEmailPlugin implements EmailPlugin {
 	readonly id = "spam";
 	readonly name = "Spam Email";
+	readonly description =
+		"Phishing, scam, and unsolicited email for spam filter testing";
 	readonly defaultWeight = 0.3;
 
 	readonly capabilities: PluginCapabilities = {

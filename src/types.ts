@@ -204,6 +204,12 @@ export interface EmailPlugin {
 	readonly name: string;
 
 	/**
+	 * Brief description of what this plugin generates.
+	 * @example "Personal and business correspondence"
+	 */
+	readonly description: string;
+
+	/**
 	 * Declares what this plugin can and cannot do.
 	 */
 	readonly capabilities: PluginCapabilities;
