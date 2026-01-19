@@ -1,18 +1,21 @@
 {
 	"$schema": "./schema.json",
 	"generate": {
+		"seed": 1984,
 		"output": "./maildir",
-		"count": 100,
-		"participants": 20,
-		"conversations": 30,
+		"count": 500,
+		"participants": 50,
+		"conversations": 100,
 		"htmlProbability": 0.7,
-		"replyProbability": 0.4,
+		"replyProbability": 0.6,
 		"forwardProbability": 0.1,
-		"plugins": ["standard"],
-		"allPlugins": false,
+		"allPlugins": true,
 		"fallbackLocale": "en",
 		"locales": {
-			"en": 1.0
+			"en": 0.5,
+			"fr": 0.2,
+			"de": 0.2,
+			"es": 0.1
 		},
 		"quiet": false
 	},
