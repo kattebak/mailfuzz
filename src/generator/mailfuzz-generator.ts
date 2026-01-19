@@ -347,7 +347,9 @@ export class MailfuzzGenerator {
 
 		// Update conversation state
 		if (messageType === "original") {
-			this.conversationManager.createConversation(message);
+			// Newsletter and similar plugins don't allow replies to their conversations
+			const allowReplies = plugin.capabilities.canBeReply !== false;
+			this.conversationManager.createConversation(message, allowReplies);
 		} else if (context.parentMessage) {
 			const convId = this.getConversationIdForParent(
 				context.parentMessage.messageId,
@@ -366,14 +368,18 @@ export class MailfuzzGenerator {
 	private determineMessageType(): "original" | "reply" | "forward" {
 		const { replyProbability, forwardProbability } = this.config.content;
 
-		// Can only reply/forward if there are existing conversations
+		// Can only forward if there are existing conversations
 		if (this.conversationManager.count === 0) {
 			return "original";
 		}
 
 		const roll = this.faker.number.float({ min: 0, max: 1 });
 
-		if (roll < replyProbability) {
+		// Can only reply if there are replyable conversations (not newsletters, etc.)
+		if (
+			roll < replyProbability &&
+			this.conversationManager.replyableCount > 0
+		) {
 			return "reply";
 		}
 
@@ -444,7 +450,10 @@ export class MailfuzzGenerator {
 
 		// For replies and forwards, use conversation context
 		if ((isReply || isForward) && this.conversationManager.count > 0) {
-			const conversation = this.conversationManager.getRandomConversation();
+			// Use replyable conversations for replies, any conversation for forwards
+			const conversation = isReply
+				? this.conversationManager.getRandomReplyableConversation()
+				: this.conversationManager.getRandomConversation();
 
 			if (conversation) {
 				const lastMessage = conversation.lastMessage;

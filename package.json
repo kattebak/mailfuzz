@@ -37,6 +37,7 @@
 		"test:coverage": "vitest run --coverage",
 		"typecheck": "tsc --noEmit",
 		"prepublishOnly": "npm run build",
+		"qa:generate": "npm run dev -- generate -c qa.mailfuzz.json",
 		"qa:start": "./npm-scripts/qa-start.sh",
 		"qa:stop": "./npm-scripts/qa-stop.sh",
 		"qa:logs": "./npm-scripts/qa-logs.sh",

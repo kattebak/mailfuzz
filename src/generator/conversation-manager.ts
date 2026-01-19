@@ -17,8 +17,13 @@ export class ConversationManager {
 
 	/**
 	 * Create a new conversation from an original message.
+	 * @param message - The original message starting the conversation
+	 * @param allowReplies - Whether this conversation can receive replies (false for newsletters, etc.)
 	 */
-	createConversation(message: GeneratedMessage): Conversation {
+	createConversation(
+		message: GeneratedMessage,
+		allowReplies = true,
+	): Conversation {
 		const id = `conv-${++this.conversationCounter}`;
 		const conversation: Conversation = {
 			id,
@@ -26,6 +31,7 @@ export class ConversationManager {
 			lastMessage: message,
 			participants: [message.from, ...message.to],
 			subject: message.subject,
+			allowReplies,
 		};
 
 		// If we're at max conversations, remove the oldest
@@ -65,7 +71,7 @@ export class ConversationManager {
 	}
 
 	/**
-	 * Get a random conversation for reply/forward.
+	 * Get a random conversation for forward.
 	 * Returns undefined if no conversations exist.
 	 */
 	getRandomConversation(): Conversation | undefined {
@@ -75,6 +81,31 @@ export class ConversationManager {
 
 		const conversations = Array.from(this.conversations.values());
 		return this.faker.helpers.arrayElement(conversations);
+	}
+
+	/**
+	 * Get a random conversation that allows replies.
+	 * Excludes newsletters, marketing emails, etc.
+	 * Returns undefined if no replyable conversations exist.
+	 */
+	getRandomReplyableConversation(): Conversation | undefined {
+		const replyable = Array.from(this.conversations.values()).filter(
+			(c) => c.allowReplies,
+		);
+
+		if (replyable.length === 0) {
+			return undefined;
+		}
+
+		return this.faker.helpers.arrayElement(replyable);
+	}
+
+	/**
+	 * Get the count of conversations that allow replies.
+	 */
+	get replyableCount(): number {
+		return Array.from(this.conversations.values()).filter((c) => c.allowReplies)
+			.length;
 	}
 
 	/**

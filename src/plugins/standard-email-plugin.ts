@@ -6,6 +6,247 @@ import type {
 } from "../types.js";
 
 /**
+ * Locale-aware greetings for different languages.
+ * The placeholder {name} will be replaced with the recipient's first name.
+ */
+const GREETINGS: Record<string, string[]> = {
+	de: [
+		"Hallo {name},",
+		"Liebe(r) {name},",
+		"Guten Tag {name},",
+		"Sehr geehrte(r) {name},",
+		"{name},",
+	],
+	fr: [
+		"Bonjour {name},",
+		"Salut {name},",
+		"Cher/Chère {name},",
+		"Bonsoir {name},",
+		"{name},",
+	],
+	nl: [
+		"Hallo {name},",
+		"Beste {name},",
+		"Geachte {name},",
+		"Dag {name},",
+		"{name},",
+	],
+	es: [
+		"Hola {name},",
+		"Querido/a {name},",
+		"Estimado/a {name},",
+		"Buenos días {name},",
+		"{name},",
+	],
+	it: [
+		"Ciao {name},",
+		"Caro/a {name},",
+		"Gentile {name},",
+		"Buongiorno {name},",
+		"{name},",
+	],
+	pt: [
+		"Olá {name},",
+		"Caro/a {name},",
+		"Prezado/a {name},",
+		"Bom dia {name},",
+		"{name},",
+	],
+	en: ["Hi {name},", "Hey {name},", "Hello {name},", "Dear {name},", "{name},"],
+};
+
+/**
+ * Locale-aware sign-offs for different languages.
+ */
+const SIGNOFFS: Record<string, string[]> = {
+	de: [
+		"Mit freundlichen Grüßen",
+		"Viele Grüße",
+		"Liebe Grüße",
+		"Beste Grüße",
+		"Bis bald",
+		"Danke",
+	],
+	fr: [
+		"Cordialement",
+		"Bien cordialement",
+		"Amicalement",
+		"À bientôt",
+		"Merci",
+		"Salutations",
+	],
+	nl: [
+		"Met vriendelijke groet",
+		"Groetjes",
+		"Hartelijke groet",
+		"Tot ziens",
+		"Bedankt",
+	],
+	es: ["Saludos", "Un abrazo", "Atentamente", "Hasta pronto", "Gracias"],
+	it: ["Cordiali saluti", "Saluti", "A presto", "Grazie", "Cari saluti"],
+	pt: ["Atenciosamente", "Abraços", "Até logo", "Obrigado/a", "Saudações"],
+	en: [
+		"Best",
+		"Thanks",
+		"Cheers",
+		"Regards",
+		"Best regards",
+		"Talk soon",
+		"Thanks!",
+	],
+};
+
+/**
+ * Locale-aware response starters for replies.
+ */
+const RESPONSE_STARTERS: Record<string, string[]> = {
+	de: [
+		"Danke für deine Nachricht.",
+		"Guter Punkt.",
+		"Ich schaue mir das an.",
+		"Klingt gut.",
+		"Danke für die Info.",
+		"Verstanden, danke.",
+		"Das ergibt Sinn.",
+		"Danke für das Update.",
+	],
+	fr: [
+		"Merci pour ton message.",
+		"Bonne remarque.",
+		"Je vais regarder ça.",
+		"Ça me semble bien.",
+		"Merci de m'avoir prévenu.",
+		"Compris, merci.",
+		"C'est logique.",
+		"Merci pour la mise à jour.",
+	],
+	nl: [
+		"Bedankt voor je bericht.",
+		"Goed punt.",
+		"Ik zal ernaar kijken.",
+		"Klinkt goed.",
+		"Bedankt voor de info.",
+		"Begrepen, bedankt.",
+		"Dat is logisch.",
+		"Bedankt voor de update.",
+	],
+	es: [
+		"Gracias por tu mensaje.",
+		"Buen punto.",
+		"Lo revisaré.",
+		"Me parece bien.",
+		"Gracias por avisarme.",
+		"Entendido, gracias.",
+		"Tiene sentido.",
+		"Gracias por la actualización.",
+	],
+	it: [
+		"Grazie per il tuo messaggio.",
+		"Buon punto.",
+		"Ci darò un'occhiata.",
+		"Mi sembra bene.",
+		"Grazie per l'informazione.",
+		"Capito, grazie.",
+		"Ha senso.",
+		"Grazie per l'aggiornamento.",
+	],
+	pt: [
+		"Obrigado pela mensagem.",
+		"Bom ponto.",
+		"Vou dar uma olhada.",
+		"Parece bom.",
+		"Obrigado por avisar.",
+		"Entendido, obrigado.",
+		"Faz sentido.",
+		"Obrigado pela atualização.",
+	],
+	en: [
+		"Thanks for reaching out.",
+		"Good point.",
+		"I'll look into that.",
+		"Sounds good to me.",
+		"Thanks for letting me know.",
+		"Got it, thanks.",
+		"Makes sense.",
+		"Thanks for the update.",
+	],
+};
+
+/**
+ * Locale-aware forward introductions.
+ */
+const FORWARD_INTROS: Record<string, string[]> = {
+	de: [
+		"Zur Info",
+		"Das könnte dich interessieren.",
+		"Leite das mal weiter.",
+		"Siehe unten.",
+		"FYI - siehe unten",
+	],
+	fr: [
+		"Pour info",
+		"Ça pourrait t'intéresser.",
+		"Je te fais suivre.",
+		"Voir ci-dessous.",
+		"FYI - voir ci-dessous",
+	],
+	nl: [
+		"Ter info",
+		"Dit is misschien interessant voor je.",
+		"Stuur ik even door.",
+		"Zie hieronder.",
+		"FYI - zie hieronder",
+	],
+	es: [
+		"Para tu información",
+		"Esto podría interesarte.",
+		"Te reenvío esto.",
+		"Ver abajo.",
+		"FYI - ver abajo",
+	],
+	it: [
+		"Per tua informazione",
+		"Potrebbe interessarti.",
+		"Ti inoltro questo.",
+		"Vedi sotto.",
+		"FYI - vedi sotto",
+	],
+	pt: [
+		"Para sua informação",
+		"Isso pode te interessar.",
+		"Encaminhando isso.",
+		"Veja abaixo.",
+		"FYI - veja abaixo",
+	],
+	en: [
+		"FYI",
+		"Thought you might find this interesting.",
+		"Forwarding this along.",
+		"See below.",
+		"FYI - see below",
+		"Passing this along.",
+		"Thought you should see this.",
+	],
+};
+
+/**
+ * Get the base locale code from a locale string.
+ * @example "de_AT" -> "de", "en_US" -> "en"
+ */
+function getBaseLocale(locale: string): string {
+	const parts = locale.split("_");
+	return parts[0] ?? "en";
+}
+
+/**
+ * Get locale-aware options with fallback to English.
+ */
+function getLocaleOptions<T>(map: Record<string, T[]>, locale: string): T[] {
+	const baseLocale = getBaseLocale(locale);
+	return map[baseLocale] ?? map["en"] ?? [];
+}
+
+/**
  * Standard email plugin for generating personal/business correspondence.
  * Supports replies, forwards, and original emails with HTML.
  */
@@ -40,7 +281,7 @@ export class StandardEmailPlugin implements EmailPlugin {
 	}
 
 	private generateOriginal(context: GenerationContext): EmailContent {
-		const { faker, sender, recipients, requestHtml } = context;
+		const { faker, sender, recipients, requestHtml, locale } = context;
 
 		const primaryRecipient = recipients[0];
 		if (!primaryRecipient) {
@@ -61,25 +302,17 @@ export class StandardEmailPlugin implements EmailPlugin {
 		const subjectTemplate = faker.helpers.arrayElement(subjectTemplates);
 		const subject = subjectTemplate();
 
-		const greeting = faker.helpers.arrayElement([
-			`Hi ${primaryRecipient.firstName},`,
-			`Hey ${primaryRecipient.firstName},`,
-			`Hello ${primaryRecipient.firstName},`,
-			`Dear ${primaryRecipient.firstName},`,
-			`${primaryRecipient.firstName},`,
-		]);
+		const greetings = getLocaleOptions(GREETINGS, locale);
+		const greetingTemplate = faker.helpers.arrayElement(greetings);
+		const greeting = greetingTemplate.replace(
+			"{name}",
+			primaryRecipient.firstName,
+		);
 
 		const bodyParagraphs = this.generateEmailBody(context);
 
-		const signoff = faker.helpers.arrayElement([
-			"Best",
-			"Thanks",
-			"Cheers",
-			"Regards",
-			"Best regards",
-			"Talk soon",
-			"Thanks!",
-		]);
+		const signoffs = getLocaleOptions(SIGNOFFS, locale);
+		const signoff = faker.helpers.arrayElement(signoffs);
 
 		const text = `${greeting}\n\n${bodyParagraphs}\n\n${signoff},\n${sender.firstName}`;
 
@@ -107,34 +340,19 @@ ${htmlParagraphs}
 	}
 
 	private generateReply(context: GenerationContext): EmailContent {
-		const { faker, sender, parentMessage, requestHtml } = context;
+		const { faker, sender, parentMessage, requestHtml, locale } = context;
 
 		if (!parentMessage) {
 			throw new Error("Parent message required for reply");
 		}
 
-		const responseStarters = [
-			"Thanks for reaching out.",
-			"Good point.",
-			`I'll look into that.`,
-			"Sounds good to me.",
-			"Thanks for letting me know.",
-			"Got it, thanks.",
-			"Makes sense.",
-			"I appreciate you sharing this.",
-			"Thanks for the update.",
-			"I see what you mean.",
-		];
-
+		const responseStarters = getLocaleOptions(RESPONSE_STARTERS, locale);
 		const response = faker.helpers.arrayElement(responseStarters);
 		const body = this.generateReplyBody(context);
 
-		const signoff = faker.helpers.arrayElement([
-			"Best",
-			"Thanks",
-			"Cheers",
-			`-${sender.firstName}`,
-		]);
+		const signoffs = getLocaleOptions(SIGNOFFS, locale);
+		const signoffOptions = [...signoffs, `-${sender.firstName}`];
+		const signoff = faker.helpers.arrayElement(signoffOptions);
 
 		const text = `${response}\n\n${body}\n\n${signoff}`;
 
@@ -161,22 +379,13 @@ ${htmlParagraphs}
 	}
 
 	private generateForward(context: GenerationContext): EmailContent {
-		const { faker, parentMessage, requestHtml } = context;
+		const { faker, parentMessage, requestHtml, locale } = context;
 
 		if (!parentMessage) {
 			throw new Error("Parent message required for forward");
 		}
 
-		const introductions = [
-			"FYI",
-			"Thought you might find this interesting.",
-			"Forwarding this along.",
-			"See below.",
-			"FYI - see below",
-			"Passing this along.",
-			"Thought you should see this.",
-		];
-
+		const introductions = getLocaleOptions(FORWARD_INTROS, locale);
 		const intro = faker.helpers.arrayElement(introductions);
 
 		// Remove existing Fwd: prefix if present

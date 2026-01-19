@@ -447,6 +447,12 @@ export interface Conversation {
 
 	/** Original subject line */
 	subject: string;
+
+	/**
+	 * Whether this conversation can receive replies.
+	 * False for newsletters, marketing emails, etc.
+	 */
+	allowReplies: boolean;
 }
 
 /**
