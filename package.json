@@ -1,0 +1,23 @@
+{
+  "name": "@kattebak/mailfuzz",
+  "version": "1.0.0",
+  "description": "Producing massive amounts of compliant, fuzzy fake emails.",
+  "homepage": "https://github.com/kattebak/mailfuzz#readme",
+  "bugs": {
+    "url": "https://github.com/kattebak/mailfuzz/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kattebak/mailfuzz.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
