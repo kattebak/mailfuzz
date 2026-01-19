@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  dovecot:
+    image: dovecot/dovecot:2.3.21
+    container_name: mailfuzz-dovecot
+    ports:
+      - "1143:143"   # IMAP on non-privileged port
+    volumes:
+      - ./maildir:/srv/mail/Maildir:rw
+      - ./qa/dovecot/dovecot-qa.conf:/etc/dovecot/conf.d/99-local.conf:ro
+    environment:
+      - USER_PASSWORD={PLAIN}testpass
+    restart: unless-stopped
