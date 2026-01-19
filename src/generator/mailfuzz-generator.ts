@@ -8,7 +8,7 @@ import {
 	validateWeight,
 } from "../plugins/plugin-interface.js";
 import { StandardEmailPlugin } from "../plugins/standard-email-plugin.js";
-import type { LocaleWeights } from "../types.js";
+import type { LocaleWeights, Participant } from "../types.js";
 import type {
 	ContentConfig,
 	EmailPlugin,
@@ -50,6 +50,7 @@ const DEFAULT_CONFIG: MailfuzzConfig = {
 		htmlProbability: 0.7,
 		replyProbability: 0.4,
 		forwardProbability: 0.1,
+		unreadProbability: 0.2,
 	},
 };
 
@@ -70,6 +71,17 @@ export interface MailfuzzGeneratorOptions {
 	htmlProbability?: number;
 	replyProbability?: number;
 	forwardProbability?: number;
+	/**
+	 * Probability of messages being unread (0-1).
+	 * Unreads are distributed towards the present (more recent = higher chance of unread).
+	 * @default 0.2
+	 */
+	unreadProbability?: number;
+	/**
+	 * Fixed recipient email address.
+	 * When set, all messages will be addressed to this recipient.
+	 */
+	recipient?: string;
 	/**
 	 * Locale weights for distribution.
 	 * @example { en: 0.7, de: 0.2, fr: 0.1 }
@@ -95,6 +107,7 @@ export class MailfuzzGenerator {
 	private readonly conversationManager: ConversationManager;
 	private readonly messageFactory: MessageFactory;
 	private readonly localeManager: LocaleManager;
+	private readonly fixedRecipient: Participant | undefined;
 
 	constructor(options: MailfuzzGeneratorOptions = {}) {
 		// Build config from options and defaults
@@ -130,6 +143,32 @@ export class MailfuzzGenerator {
 			this.config.generation.maxConversations,
 		);
 		this.messageFactory = new MessageFactory(this.faker);
+
+		// Initialize fixed recipient if configured
+		if (this.config.content.recipient) {
+			this.fixedRecipient = this.parseRecipientEmail(
+				this.config.content.recipient,
+			);
+		}
+	}
+
+	/**
+	 * Parse an email address into a Participant.
+	 * Uses deterministic fake name generation based on the email.
+	 */
+	private parseRecipientEmail(email: string): Participant {
+		// Generate deterministic names from the email local part
+		const localPart = email.split("@")[0] ?? "user";
+		// Try to split on common separators
+		const parts = localPart.split(/[._-]/);
+		const firstName =
+			parts[0]?.charAt(0).toUpperCase() + (parts[0]?.slice(1) ?? "") || "User";
+		const lastName =
+			parts.length > 1
+				? parts[1]?.charAt(0).toUpperCase() + (parts[1]?.slice(1) ?? "")
+				: this.faker.person.lastName();
+
+		return { firstName, lastName, email };
 	}
 
 	/**
@@ -164,6 +203,9 @@ export class MailfuzzGenerator {
 				forwardProbability:
 					options.forwardProbability ??
 					DEFAULT_CONFIG.content.forwardProbability,
+				unreadProbability:
+					options.unreadProbability ?? DEFAULT_CONFIG.content.unreadProbability,
+				recipient: options.recipient,
 			},
 		};
 	}
@@ -394,7 +436,10 @@ export class MailfuzzGenerator {
 				this.config.content.htmlProbability;
 
 		let sender = this.participantPool.getRandom();
-		let recipients = [this.participantPool.getRandomExcluding([sender])];
+		// Use fixed recipient if configured, otherwise select random recipient
+		let recipients = this.fixedRecipient
+			? [this.fixedRecipient]
+			: [this.participantPool.getRandomExcluding([sender])];
 		let parentMessage: ParentMessageContext | undefined;
 
 		// For replies and forwards, use conversation context
@@ -419,14 +464,21 @@ export class MailfuzzGenerator {
 					if (replyCandidate) {
 						sender = replyCandidate;
 					}
-					// Reply to the last sender
-					recipients = [lastMessage.from];
+					// Reply to the last sender, but use fixed recipient if configured
+					recipients = this.fixedRecipient
+						? [this.fixedRecipient]
+						: [lastMessage.from];
 				} else {
 					// Forward: sender picks a new recipient not in conversation
 					sender = this.faker.helpers.arrayElement(conversation.participants);
-					recipients = [
-						this.participantPool.getRandomExcluding(conversation.participants),
-					];
+					// Use fixed recipient if configured
+					recipients = this.fixedRecipient
+						? [this.fixedRecipient]
+						: [
+								this.participantPool.getRandomExcluding(
+									conversation.participants,
+								),
+							];
 				}
 			}
 		}
@@ -447,6 +499,7 @@ export class MailfuzzGenerator {
 
 	/**
 	 * Determine flags for a message based on its date.
+	 * Unread messages are distributed towards the present (more recent = higher chance of unread).
 	 */
 	private determineFlags(messageDate: Date): MaildirFlag[] {
 		const flags: MaildirFlag[] = [];
@@ -455,14 +508,24 @@ export class MailfuzzGenerator {
 		const totalRange = endDate.getTime() - startDate.getTime();
 		const messageAge = endDate.getTime() - messageDate.getTime();
 
-		// Older messages are more likely to be read
+		// Calculate age ratio (0 = newest, 1 = oldest)
 		const ageRatio = totalRange > 0 ? messageAge / totalRange : 0;
-		const readProbability = ageRatio * 0.95;
 
-		const isRead =
-			this.faker.number.float({ min: 0, max: 1 }) < readProbability;
+		// Use configured unreadProbability with time-weighted distribution
+		// Newer messages are more likely to be unread
+		// recencyWeight: 1.0 for newest, 0.0 for oldest (quadratic decay)
+		const recencyWeight = (1 - ageRatio) ** 2;
+		const unreadProbability = this.config.content.unreadProbability ?? 0.2;
 
-		if (isRead) {
+		// Effective unread probability: scales with recency
+		// A message at the very end (newest) has full unreadProbability
+		// A message at the very start (oldest) has ~0% chance of being unread
+		const effectiveUnreadProb = unreadProbability * recencyWeight;
+
+		const isUnread =
+			this.faker.number.float({ min: 0, max: 1 }) < effectiveUnreadProb;
+
+		if (!isUnread) {
 			flags.push("S"); // Seen
 		}
 

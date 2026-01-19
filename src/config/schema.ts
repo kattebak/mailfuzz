@@ -55,6 +55,22 @@ export const GenerateConfigSchema = z.object({
 		.max(1)
 		.describe("Probability of forward (0-1)"),
 
+	unreadProbability: z
+		.number()
+		.min(0)
+		.max(1)
+		.describe(
+			"Probability of unread messages (0-1, distributed towards present)",
+		),
+
+	recipient: z
+		.string()
+		.email()
+		.optional()
+		.describe(
+			"Fixed recipient email address (all messages will be addressed to this)",
+		),
+
 	quiet: z.boolean().describe("Suppress progress output"),
 
 	plugins: z.array(z.string()).describe("Plugin IDs to use"),

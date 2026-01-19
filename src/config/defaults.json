@@ -4,12 +4,13 @@
 		"seed": 1984,
 		"output": "./maildir",
 		"count": 500,
-
 		"participants": 50,
 		"conversations": 100,
 		"htmlProbability": 0.7,
 		"replyProbability": 0.6,
 		"forwardProbability": 0.1,
+		"unreadProbability": 0.2,
+		"plugins": ["standard"],
 		"allPlugins": true,
 		"fallbackLocale": "en",
 		"locales": {

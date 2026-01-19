@@ -19,6 +19,8 @@ export interface GenerateCliValues {
 	"html-probability"?: string;
 	"reply-probability"?: string;
 	"forward-probability"?: string;
+	"unread-probability"?: string;
+	recipient?: string;
 	quiet?: boolean;
 	plugins?: string;
 	"all-plugins"?: boolean;
@@ -95,6 +97,12 @@ export const mergeGenerateConfig = (
 			base.forwardProbability,
 			0.1,
 		),
+		unreadProbability: parseFloatOrDefault(
+			cliValues["unread-probability"],
+			base.unreadProbability,
+			0.2,
+		),
+		recipient: cliValues.recipient ?? base.recipient,
 		quiet: cliValues.quiet ?? base.quiet ?? false,
 		plugins: cliPlugins ?? base.plugins ?? ["standard"],
 		allPlugins: cliValues["all-plugins"] ?? base.allPlugins ?? false,

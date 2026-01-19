@@ -321,6 +321,19 @@ export interface ContentConfig {
 
 	/** Probability of generating a forward (0-1) */
 	forwardProbability: number;
+
+	/**
+	 * Probability of messages being unread (0-1).
+	 * Unreads are distributed towards the present (more recent = higher chance of unread).
+	 * @default 0.2
+	 */
+	unreadProbability?: number;
+
+	/**
+	 * Fixed recipient email address.
+	 * When set, all messages will be addressed to this recipient.
+	 */
+	recipient?: string;
 }
 
 /**

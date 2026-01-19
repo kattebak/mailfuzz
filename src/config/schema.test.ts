@@ -21,6 +21,7 @@ describe("GenerateConfigSchema", () => {
 			htmlProbability: 0.8,
 			replyProbability: 0.5,
 			forwardProbability: 0.2,
+			unreadProbability: 0.3,
 			quiet: true,
 			plugins: ["standard", "marketing"],
 			allPlugins: false,

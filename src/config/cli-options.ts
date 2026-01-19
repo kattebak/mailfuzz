@@ -65,6 +65,14 @@ export const generateCliOptions: Record<string, CliOptionMeta> = {
 		schemaPath: "generate.forwardProbability",
 		type: "string",
 	},
+	"unread-probability": {
+		schemaPath: "generate.unreadProbability",
+		type: "string",
+	},
+	recipient: {
+		schemaPath: "generate.recipient",
+		type: "string",
+	},
 	quiet: {
 		schemaPath: "generate.quiet",
 		short: "q",

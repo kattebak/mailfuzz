@@ -139,9 +139,14 @@ describe("getDefaults", () => {
 
 		expect(defaults.generate).toBeDefined();
 		expect(defaults.generate?.output).toBe("./maildir");
-		expect(defaults.generate?.count).toBe(100);
+		expect(defaults.generate?.count).toBe(500);
 		expect(defaults.generate?.plugins).toEqual(["standard"]);
-		expect(defaults.generate?.locales).toEqual({ en: 1.0 });
+		expect(defaults.generate?.locales).toEqual({
+			en: 0.2,
+			fr: 0.4,
+			de: 0.4,
+			es: 0.1,
+		});
 	});
 
 	it("returns validate defaults", () => {
@@ -289,6 +294,6 @@ describe("resolveConfig", () => {
 
 		// The config should have defaults regardless
 		expect(config.generate?.output).toBe("./maildir");
-		expect(config.generate?.count).toBe(100);
+		expect(config.generate?.count).toBe(500);
 	});
 });

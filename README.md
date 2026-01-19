@@ -87,6 +87,8 @@ GENERATE OPTIONS:
   --html-probability <n>    Probability of HTML content 0-1 (default: 0.7)
   --reply-probability <n>   Probability of reply vs new (default: 0.4)
   --forward-probability <n> Probability of forward (default: 0.1)
+  --unread-probability <n>  Probability of unread messages 0-1 (default: 0.2)
+  --recipient <email>       Fixed recipient email for all messages
   -w, --weight <plugin=n>   Override plugin weight (can be repeated)
   -q, --quiet               Suppress progress output
 
@@ -120,6 +122,8 @@ const generator = new MailfuzzGenerator({
   htmlProbability: 0.7, // Chance of HTML content
   replyProbability: 0.4, // Chance of reply vs new
   forwardProbability: 0.1, // Chance of forward
+  unreadProbability: 0.2, // Chance of unread (weighted towards present)
+  recipient: "user@example.com", // Fixed recipient for all messages
   plugins: [new StandardEmailPlugin()],
   pluginWeights: { standard: 1.0 },
 });
