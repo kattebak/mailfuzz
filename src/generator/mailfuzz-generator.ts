@@ -73,7 +73,7 @@ export interface MailfuzzGeneratorOptions {
 	forwardProbability?: number;
 	/**
 	 * Probability of messages being unread (0-1).
-	 * Unreads are distributed towards the present (more recent = higher chance of unread).
+	 * Unreads follow a logarithmic curve, concentrating most near the present.
 	 * @default 0.2
 	 */
 	unreadProbability?: number;
@@ -327,13 +327,16 @@ export class MailfuzzGenerator {
 		// Generate content from plugin
 		const content = await Promise.resolve(plugin.generate(context));
 
+		// Use plugin-provided sender if available, otherwise use context sender
+		const sender = content.sender ?? context.sender;
+
 		// Determine message flags based on age
 		const flags = this.determineFlags(date);
 
 		// Create the message
 		const message = await this.messageFactory.createMessage({
 			content,
-			from: context.sender,
+			from: sender,
 			to: context.recipients,
 			date,
 			inReplyTo: context.parentMessage?.messageId,
@@ -509,7 +512,7 @@ export class MailfuzzGenerator {
 	/**
 	 * Determine flags for a message based on its date.
 	 * Unread messages are distributed towards the present (more recent = higher chance of unread).
-	 * Uses exponential decay to concentrate unreads in recent past with a long tail.
+	 * Uses a logarithmic curve to concentrate unreads near the present with a gradual falloff.
 	 */
 	private determineFlags(messageDate: Date): MaildirFlag[] {
 		const flags: MaildirFlag[] = [];
@@ -521,16 +524,18 @@ export class MailfuzzGenerator {
 		// Calculate age ratio (0 = newest, 1 = oldest)
 		const ageRatio = totalRange > 0 ? messageAge / totalRange : 0;
 
-		// Use configured unreadProbability with exponential decay distribution
-		// This creates a strong bias towards recent messages with a long tail
-		// λ = 4 gives ~98% of unreads in the first 50% of time range
-		const decayRate = 4;
-		const recencyWeight = Math.exp(-decayRate * ageRatio);
+		// Use logarithmic curve for unread distribution
+		// log(1 + (1-x)*k) / log(1+k) where x is ageRatio and k controls steepness
+		// At ageRatio=0 (newest): recencyWeight = 1
+		// At ageRatio=1 (oldest): recencyWeight = 0
+		// k=9 gives ~70% of unreads in the most recent 30% of the time range
+		const steepness = 9;
+		const recencyWeight =
+			Math.log(1 + (1 - ageRatio) * steepness) / Math.log(1 + steepness);
 		const unreadProbability = this.config.content.unreadProbability ?? 0.2;
 
-		// Effective unread probability: scales with recency
-		// A message at the very end (newest) has full unreadProbability
-		// Older messages have exponentially decreasing probability (but never zero)
+		// Effective unread probability: scales with recency via logarithmic curve
+		// Newest messages have full unreadProbability, older messages have lower probability
 		const effectiveUnreadProb = unreadProbability * recencyWeight;
 
 		const isUnread =

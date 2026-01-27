@@ -2,6 +2,7 @@ import type {
 	EmailContent,
 	EmailPlugin,
 	GenerationContext,
+	Participant,
 	PluginCapabilities,
 } from "../types.js";
 
@@ -64,6 +65,7 @@ interface Publication {
 	authorTitle: string;
 	domain: string;
 	issueNumber: number;
+	sender: Participant;
 }
 
 interface LinkItem {
@@ -142,6 +144,7 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 		const publicationName = pluginConfig?.["publicationName"];
 		if (publicationName && typeof publicationName === "string") {
 			const name = publicationName;
+			const domain = `${name.toLowerCase().replace(/[^a-z]/g, "")}.io`;
 			return {
 				name,
 				tagline: faker.company.catchPhrase(),
@@ -149,8 +152,13 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 				frequency: faker.helpers.arrayElement(["daily", "weekly", "monthly"]),
 				authorName: faker.person.fullName(),
 				authorTitle: "Editor",
-				domain: `${name.toLowerCase().replace(/[^a-z]/g, "")}.io`,
+				domain,
 				issueNumber: faker.number.int({ min: 1, max: 500 }),
+				sender: {
+					firstName: name,
+					lastName: "",
+					email: `newsletter@${domain}`,
+				},
 			};
 		}
 
@@ -180,6 +188,7 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 
 		// Generate consistent author for publication using name as seed modifier
 		const authorName = faker.person.fullName();
+		const domain = `${selectedPub.name.toLowerCase().replace(/[^a-z]/g, "")}.io`;
 
 		return {
 			name: selectedPub.name,
@@ -193,8 +202,13 @@ export class NewsletterEmailPlugin implements EmailPlugin {
 				"Founder",
 				"Author",
 			]),
-			domain: `${selectedPub.name.toLowerCase().replace(/[^a-z]/g, "")}.io`,
+			domain,
 			issueNumber,
+			sender: {
+				firstName: selectedPub.name,
+				lastName: "",
+				email: `newsletter@${domain}`,
+			},
 		};
 	}
 
@@ -299,7 +313,7 @@ ${publication.authorTitle}, ${publication.name}
 Unsubscribe: https://${publication.domain}/unsubscribe
 ${publication.name} | ${publication.domain}`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = { subject, text, sender: publication.sender };
 
 		if (requestHtml) {
 			result.html = this.generateNewsletterHtml(
@@ -365,7 +379,7 @@ ${publication.name}
 
 Unsubscribe: https://${publication.domain}/unsubscribe`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = { subject, text, sender: publication.sender };
 
 		if (requestHtml) {
 			result.html = this.generateNewsletterHtml(
@@ -427,7 +441,7 @@ ${publication.authorName}
 ---
 Unsubscribe: https://${publication.domain}/unsubscribe`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = { subject, text, sender: publication.sender };
 
 		if (requestHtml) {
 			result.html = this.generateCuratedHtml(publication, intro, links);
@@ -493,7 +507,7 @@ ${publication.authorTitle}
 
 Unsubscribe: https://${publication.domain}/unsubscribe`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = { subject, text, sender: publication.sender };
 
 		if (requestHtml) {
 			result.html = this.generateNewsletterHtml(
@@ -568,7 +582,7 @@ P.S. ${faker.helpers.arrayElement([
 Unsubscribe: https://${publication.domain}/unsubscribe
 Reply to this email anytime - I read everything!`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = { subject, text, sender: publication.sender };
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>

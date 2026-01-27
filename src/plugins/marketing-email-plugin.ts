@@ -2,6 +2,7 @@ import type {
 	EmailContent,
 	EmailPlugin,
 	GenerationContext,
+	Participant,
 	PluginCapabilities,
 } from "../types.js";
 
@@ -31,7 +32,46 @@ interface Brand {
 	domain: string;
 	industry: string;
 	primaryColor: string;
+	sender: Participant;
 }
+
+/**
+ * Bulk email service domains - typical marketing email senders.
+ */
+const BULK_EMAIL_DOMAINS = [
+	"mail.sendgrid.net",
+	"em.mailchimp.com",
+	"bounce.mailjet.com",
+	"mail.klaviyo.com",
+	"t.mailersend.com",
+	"email.campaign-archive.com",
+	"mailer.constantcontact.com",
+	"bounce.brevo.com",
+	"mta.marketo.com",
+	"email.hubspot.com",
+	"promo.mailgun.org",
+	"bulk.intercom-mail.com",
+];
+
+/**
+ * Sender prefixes for marketing emails.
+ */
+const SENDER_PREFIXES = [
+	"no-reply",
+	"noreply",
+	"info",
+	"hello",
+	"deals",
+	"offers",
+	"promo",
+	"marketing",
+	"news",
+	"updates",
+	"shop",
+	"store",
+	"team",
+	"support",
+];
 
 const INDUSTRIES = [
 	"retail",
@@ -103,12 +143,14 @@ export class MarketingEmailPlugin implements EmailPlugin {
 		const brandName = pluginConfig?.["brandName"];
 		if (brandName && typeof brandName === "string") {
 			const name = brandName;
+			const domain = `${name.toLowerCase().replace(/[^a-z]/g, "")}.com`;
 			return {
 				name,
 				tagline: faker.company.catchPhrase(),
-				domain: `${name.toLowerCase().replace(/[^a-z]/g, "")}.com`,
+				domain,
 				industry: faker.helpers.arrayElement(INDUSTRIES),
 				primaryColor: faker.color.rgb(),
+				sender: this.generateSender(context, name, domain),
 			};
 		}
 
@@ -134,13 +176,53 @@ export class MarketingEmailPlugin implements EmailPlugin {
 			throw new Error(`No name pattern for industry: ${industry}`);
 		}
 		const name = nameGenerator();
+		const domain = `${name.toLowerCase().replace(/[^a-z]/g, "")}.com`;
 
 		return {
 			name,
 			tagline: faker.company.catchPhrase(),
-			domain: `${name.toLowerCase().replace(/[^a-z]/g, "")}.com`,
+			domain,
 			industry,
 			primaryColor: faker.color.rgb(),
+			sender: this.generateSender(context, name, domain),
+		};
+	}
+
+	/**
+	 * Generate a marketing sender - typically no-reply from bulk email service.
+	 */
+	private generateSender(
+		context: GenerationContext,
+		brandName: string,
+		brandDomain: string,
+	): Participant {
+		const { faker } = context;
+
+		// 70% chance of using bulk email service, 30% chance of brand domain
+		const useBulkService = faker.number.float({ min: 0, max: 1 }) < 0.7;
+
+		const prefix = faker.helpers.arrayElement(SENDER_PREFIXES);
+
+		if (useBulkService) {
+			const bulkDomain = faker.helpers.arrayElement(BULK_EMAIL_DOMAINS);
+			// Bulk services often encode brand in subdomain or local part
+			const localPart = faker.helpers.arrayElement([
+				`${prefix}`,
+				`${brandName.toLowerCase().replace(/[^a-z]/g, "")}`,
+				`${prefix}.${brandName.toLowerCase().replace(/[^a-z]/g, "")}`,
+				`${faker.string.alphanumeric(8)}`,
+			]);
+			return {
+				firstName: brandName,
+				lastName: "",
+				email: `${localPart}@${bulkDomain}`,
+			};
+		}
+
+		return {
+			firstName: brandName,
+			lastName: "",
+			email: `${prefix}@${brandDomain}`,
 		};
 	}
 
@@ -169,30 +251,59 @@ export class MarketingEmailPlugin implements EmailPlugin {
 		const compliance = this.generateCompliance(context, brand);
 		const recipient = recipients[0];
 
-		const discount = faker.helpers.arrayElement([20, 25, 30, 40, 50, 60, 70]);
+		const discount = faker.helpers.arrayElement([
+			15, 20, 25, 30, 40, 50, 60, 70, 75, 80,
+		]);
+
+		// More aggressive urgency patterns
 		const urgency = faker.helpers.arrayElement([
-			"Today only",
-			"Ends tonight",
-			"24 hours only",
-			"This weekend only",
-			"Limited time",
+			"TODAY ONLY",
+			"ENDS TONIGHT",
+			"LAST CHANCE",
+			"FINAL HOURS",
+			"24 HOURS ONLY",
+			"ENDING SOON",
+			"ACT NOW",
+			"DON'T WAIT",
+			"HURRY",
+			"EXPIRES MIDNIGHT",
+			"GOING FAST",
+			"ALMOST GONE",
 		]);
 
+		// More aggressive/pushy subject lines
 		const subject = faker.helpers.arrayElement([
-			`${discount}% off everything - ${urgency}!`,
-			`Your exclusive ${discount}% discount expires tonight`,
-			`Flash Sale: Up to ${discount}% off select items`,
-			`Don't miss out: ${discount}% off ${urgency}`,
-			`${brand.name} Sale: ${discount}% off sitewide`,
+			`🚨 ${discount}% OFF - ${urgency}!`,
+			`⚡ FLASH SALE: ${discount}% off EVERYTHING`,
+			`😱 ${urgency}: Up to ${discount}% off!`,
+			`🔥 You're MISSING OUT on ${discount}% savings`,
+			`❗ Don't ignore this: ${discount}% off expires TONIGHT`,
+			`💥 ${brand.name}: ${discount}% OFF - ${urgency}`,
+			`⏰ ${urgency}! ${discount}% off won't last`,
+			`🎁 Your ${discount}% discount is about to DISAPPEAR`,
+			`👀 Still thinking? ${discount}% off ends soon`,
+			`💸 FREE MONEY: ${discount}% off everything`,
+			`🛒 Your cart misses you - here's ${discount}% off`,
+			`⚠️ WARNING: ${discount}% sale ending!`,
+			`Re: Your ${discount}% off code (expiring)`,
+			`Fwd: ${discount}% discount - did you see this?`,
+			`URGENT: ${brand.name} ${discount}% off - ${urgency}`,
 		]);
 
-		const text = `Hi ${recipient?.firstName ?? "there"},
+		// Generate pushy marketing copy
+		const pushyCopy = this.generatePushyCopy(context, brand, discount);
 
-${urgency.toUpperCase()}! Save ${discount}% on everything at ${brand.name}.
+		const text = `${recipient?.firstName ?? "Friend"},
 
-Use code SAVE${discount} at checkout.
+${urgency}! This is your LAST CHANCE to save ${discount}% on everything at ${brand.name}!
 
-Shop now at ${brand.domain}
+${pushyCopy}
+
+>>> USE CODE: SAVE${discount} <<<
+
+🛒 SHOP NOW: https://${brand.domain}/sale
+
+Don't let this slip away. ${faker.company.buzzPhrase()}!
 
 ${brand.tagline}
 
@@ -200,9 +311,10 @@ ${brand.tagline}
 ${brand.name}
 ${compliance.address}
 
-Unsubscribe: ${compliance.unsubscribeUrl}`;
+Unsubscribe: ${compliance.unsubscribeUrl}
+This email was sent to ${recipient?.email ?? "you"} because you signed up for ${brand.name} promotions.`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = { subject, text, sender: brand.sender };
 
 		if (requestHtml) {
 			result.html = this.generatePromotionalHtml(
@@ -215,6 +327,45 @@ Unsubscribe: ${compliance.unsubscribeUrl}`;
 		}
 
 		return result;
+	}
+
+	/**
+	 * Generate pushy marketing copy with urgency and FOMO.
+	 */
+	private generatePushyCopy(
+		context: GenerationContext,
+		brand: Brand,
+		discount: number,
+	): string {
+		const { faker } = context;
+
+		const fomoLines = [
+			`${faker.number.int({ min: 100, max: 2000 })} customers already grabbed this deal!`,
+			`Only ${faker.number.int({ min: 3, max: 50 })} items left at this price.`,
+			`${faker.number.int({ min: 50, max: 500 })} people are viewing this sale RIGHT NOW.`,
+			`This deal sold out in ${faker.number.int({ min: 2, max: 12 })} hours last time!`,
+			`Our best-selling items are ${faker.number.int({ min: 60, max: 90 })}% claimed.`,
+		];
+
+		const urgencyLines = [
+			"Prices go back up at MIDNIGHT. No exceptions.",
+			"Once it's gone, it's GONE. We won't restock at this price.",
+			`This is NOT a drill. ${discount}% off ends TODAY.`,
+			"We've NEVER offered a deal this good. Don't blow it.",
+			"Your wallet will thank you. Your future self will thank you.",
+		];
+
+		const benefitLines = [
+			`${this.capitalize(faker.commerce.productAdjective())} ${faker.commerce.product()}s at unbeatable prices.`,
+			`${this.capitalize(faker.company.buzzVerb())} your ${faker.company.buzzNoun()} with our ${faker.commerce.productAdjective()} collection.`,
+			`Premium ${faker.commerce.productMaterial()} ${faker.commerce.product()}s - now ${discount}% off.`,
+		];
+
+		return `${faker.helpers.arrayElement(fomoLines)}
+
+${faker.helpers.arrayElement(urgencyLines)}
+
+${faker.helpers.arrayElement(benefitLines)}`;
 	}
 
 	private generatePromotionalHtml(
@@ -274,37 +425,59 @@ Unsubscribe: ${compliance.unsubscribeUrl}`;
 		const compliance = this.generateCompliance(context, brand);
 		const recipient = recipients[0];
 
-		const productName = `${this.capitalize(faker.word.adjective())} ${this.capitalize(faker.commerce.product())}`;
+		const productName = `${this.capitalize(faker.commerce.productAdjective())} ${this.capitalize(faker.commerce.product())}`;
 		const productFeatures = [
+			this.generateBenefit(context),
 			this.generateBenefit(context),
 			this.generateBenefit(context),
 			this.generateBenefit(context),
 		];
 
+		// More aggressive product launch subjects
 		const subject = faker.helpers.arrayElement([
-			`Introducing the all-new ${productName}`,
-			`Meet the ${productName}`,
-			`You asked, we listened - ${productName} is here`,
-			`First look: ${productName}`,
-			`NEW: ${productName} just launched`,
+			`🆕 JUST DROPPED: The ${productName}`,
+			`🎉 IT'S HERE! The ${productName} you've been waiting for`,
+			`⚡ FIRST LOOK: ${productName} - Be the FIRST to own it`,
+			`🔥 NEW RELEASE: ${productName} is selling FAST`,
+			`👀 Psst... the ${productName} just launched`,
+			`📢 BREAKING: ${brand.name} unveils the ${productName}`,
+			`💎 EXCLUSIVE: Get the new ${productName} before everyone else`,
+			`🚀 The wait is OVER - ${productName} is live!`,
+			`You asked, we delivered: ${productName} 🎁`,
+			`The ${productName} is here and it's ${faker.commerce.productAdjective()}`,
 		]);
 
-		const text = `Hi ${recipient?.firstName ?? "there"},
+		const hypeIntro = faker.helpers.arrayElement([
+			"The moment you've been waiting for is HERE.",
+			"We've been working on something SPECIAL.",
+			`Get ready to ${faker.company.buzzVerb()} like never before.`,
+			"This changes EVERYTHING.",
+			"We're SO excited to finally share this with you!",
+		]);
 
-We're excited to introduce the ${productName}!
+		const text = `${recipient?.firstName ?? "Hey there"}!
 
-${productFeatures.join("\n")}
+${hypeIntro}
 
-Be among the first to experience ${productName}.
+Introducing the ALL-NEW ${productName}! 🎉
 
-Learn more at ${brand.domain}
+✨ ${productFeatures.join("\n✨ ")}
 
+${faker.number.int({ min: 500, max: 5000 })} people already pre-ordered. Don't get left behind!
+
+🛒 GET YOURS NOW: https://${brand.domain}/new/${productName.toLowerCase().replace(/\s/g, "-")}
+
+${faker.company.buzzPhrase()} - only from ${brand.name}.
+
+${brand.tagline}
+
+---
 ${brand.name}
 ${compliance.address}
 
 Unsubscribe: ${compliance.unsubscribeUrl}`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = { subject, text, sender: brand.sender };
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -360,51 +533,73 @@ ${productFeatures.map((f) => `<li>${this.escapeHtml(f)}</li>`).join("\n")}
 		const compliance = this.generateCompliance(context, brand);
 		const recipient = recipients[0];
 
-		const cartItems = [
-			{
-				name: faker.commerce.productName(),
-				price: faker.commerce.price({ min: 20, max: 200 }),
-			},
-			{
-				name: faker.commerce.productName(),
-				price: faker.commerce.price({ min: 20, max: 200 }),
-			},
-		];
+		const itemCount = faker.number.int({ min: 1, max: 4 });
+		const cartItems = Array.from({ length: itemCount }, () => ({
+			name: faker.commerce.productName(),
+			price: faker.commerce.price({ min: 20, max: 300 }),
+		}));
 
-		const discount = faker.helpers.arrayElement([10, 15, 20]);
+		const discount = faker.helpers.arrayElement([10, 15, 20, 25, 30]);
 		const hasFreeShipping = faker.datatype.boolean();
+		const stockWarning = faker.datatype.boolean();
 
+		// More aggressive abandoned cart subjects
 		const subject = faker.helpers.arrayElement([
-			"Did you forget something?",
-			"Your cart is waiting for you",
-			`Complete your order - ${discount}% off inside`,
+			"😱 You LEFT something behind!",
+			"⚠️ Your cart is about to EXPIRE",
+			`🛒 Complete your order NOW - ${discount}% off!`,
+			"👀 We noticed you didn't finish...",
+			`⏰ HURRY! Your items won't last (${discount}% off)`,
+			"🚨 Don't lose your cart!",
+			`💸 Here's ${discount}% off to finish your order`,
+			"Did you forget about us? 😢",
 			hasFreeShipping
-				? "Still thinking about it? Here's free shipping"
-				: "Your items are selling fast!",
-			"We saved your cart for you",
+				? "🎁 FREE SHIPPING on your abandoned cart!"
+				: "⚡ Your items are almost SOLD OUT",
+			`Re: Your incomplete order at ${brand.name}`,
+			"FINAL REMINDER: Complete your purchase",
+			`${recipient?.firstName ?? "Hey"}, you left $${cartItems.reduce((sum, item) => sum + Number.parseFloat(item.price), 0).toFixed(0)} in your cart!`,
 		]);
 
 		const itemsList = cartItems
-			.map((item) => `- ${item.name} ($${item.price})`)
+			.map((item) => `🛍️ ${item.name} - $${item.price}`)
 			.join("\n");
 
-		const text = `Hi ${recipient?.firstName ?? "there"},
+		const totalValue = cartItems
+			.reduce((sum, item) => sum + Number.parseFloat(item.price), 0)
+			.toFixed(2);
 
-Looks like you left some items in your cart at ${brand.name}!
+		const urgencyMessage = faker.helpers.arrayElement([
+			`These items are in ${faker.number.int({ min: 5, max: 50 })} other carts right now!`,
+			"Stock is running LOW. We can't hold these forever.",
+			`${faker.number.int({ min: 10, max: 100 })} people bought this in the last hour!`,
+			"Your reserved items will be released to other shoppers soon.",
+			"Prices may increase. Lock in your savings NOW.",
+		]);
+
+		const text = `${recipient?.firstName ?? "Hey"},
+
+You left some ${faker.commerce.productAdjective().toLowerCase()} items in your cart! 🛒
 
 ${itemsList}
 
-${discount > 0 ? `Use code COMEBACK${discount} for ${discount}% off your order.` : ""}
-${hasFreeShipping ? "Plus, enjoy FREE shipping on this order!" : ""}
+💰 Cart Total: $${totalValue}
+${discount > 0 ? `🎉 YOUR DISCOUNT: ${discount}% OFF with code COMEBACK${discount}` : ""}
+${hasFreeShipping ? "📦 BONUS: FREE SHIPPING on this order!" : ""}
 
-Complete your purchase: https://${brand.domain}/cart
+${stockWarning ? urgencyMessage : ""}
+
+👉 COMPLETE YOUR ORDER: https://${brand.domain}/cart/recover
+
+Don't let ${faker.company.buzzAdjective()} deals slip away!
 
 ${brand.name}
 ${compliance.address}
 
-Unsubscribe: ${compliance.unsubscribeUrl}`;
+Unsubscribe: ${compliance.unsubscribeUrl}
+Sent because you have items in your ${brand.name} cart.`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = { subject, text, sender: brand.sender };
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -470,31 +665,74 @@ ${hasFreeShipping ? '<p style="color: #28a745; font-weight: bold;">+ FREE SHIPPI
 		const compliance = this.generateCompliance(context, brand);
 		const recipient = recipients[0];
 
-		const points = faker.number.int({ min: 100, max: 5000 });
+		const points = faker.number.int({ min: 100, max: 10000 });
+		const pointsExpiring = faker.number.int({ min: 50, max: points });
 		const tier = faker.helpers.arrayElement([
 			"Bronze",
 			"Silver",
 			"Gold",
 			"Platinum",
+			"Diamond",
+			"VIP",
 		]);
 		const isBirthday = faker.datatype.boolean({ probability: 0.2 });
+		const isExpiring = faker.datatype.boolean({ probability: 0.3 });
 
 		let subject: string;
 		let text: string;
 
 		if (isBirthday) {
-			subject = `Happy Birthday! Here's a gift from ${brand.name}`;
-			text = `Happy Birthday, ${recipient?.firstName ?? "friend"}!
+			subject = faker.helpers.arrayElement([
+				`🎂 Happy Birthday! FREE gift inside from ${brand.name}`,
+				`🎁 ${recipient?.firstName ?? "Friend"}, your birthday present is here!`,
+				`🎉 It's YOUR day! Claim your birthday reward`,
+				`Happy Birthday from ${brand.name}! 🥳 Special offer inside`,
+			]);
+			text = `HAPPY BIRTHDAY, ${(recipient?.firstName ?? "friend").toUpperCase()}! 🎂🎉
 
-To celebrate your special day, here's a gift from ${brand.name}:
+To celebrate YOUR special day, here's an EXCLUSIVE gift from ${brand.name}:
 
-25% OFF your next purchase!
+🎁 25% OFF your ENTIRE purchase!
+🎁 DOUBLE POINTS on everything!
+🎁 FREE ${faker.commerce.product()} with orders over $50!
 
-Use code BDAY25 at checkout.
+>>> USE CODE: BDAY25 <<<
 
-Thank you for being a valued ${tier} member!
+Your ${tier} Status: ACTIVE ✓
+Points Balance: ${points.toLocaleString()} 🌟
 
-Your current points balance: ${points.toLocaleString()} points
+Don't let your birthday reward go to waste!
+🛒 CLAIM NOW: https://${brand.domain}/birthday
+
+${brand.tagline}
+
+${brand.name}
+${compliance.address}
+
+Unsubscribe: ${compliance.unsubscribeUrl}`;
+		} else if (isExpiring) {
+			subject = faker.helpers.arrayElement([
+				`⚠️ ${pointsExpiring.toLocaleString()} points EXPIRING SOON`,
+				`🚨 Use it or lose it: ${pointsExpiring.toLocaleString()} points expire!`,
+				`😱 Don't lose ${pointsExpiring.toLocaleString()} points!`,
+				"⏰ URGENT: Your rewards expire in 48 hours",
+			]);
+			text = `${recipient?.firstName ?? "Hey"},
+
+⚠️ WARNING: You have ${pointsExpiring.toLocaleString()} points about to EXPIRE!
+
+Your ${tier} Status: ACTIVE ✓
+Total Points: ${points.toLocaleString()} 🌟
+EXPIRING SOON: ${pointsExpiring.toLocaleString()} points ⚠️
+
+Don't let your hard-earned rewards disappear!
+
+Here's what you can get:
+🎁 ${this.generateBenefit(context)} (${faker.number.int({ min: 100, max: 500 })} pts)
+🎁 ${this.generateBenefit(context)} (${faker.number.int({ min: 200, max: 800 })} pts)
+🎁 ${this.generateBenefit(context)} (${faker.number.int({ min: 500, max: 2000 })} pts)
+
+👉 REDEEM NOW: https://${brand.domain}/rewards
 
 ${brand.name}
 ${compliance.address}
@@ -502,25 +740,29 @@ ${compliance.address}
 Unsubscribe: ${compliance.unsubscribeUrl}`;
 		} else {
 			subject = faker.helpers.arrayElement([
-				`You've earned ${points.toLocaleString()} bonus points!`,
-				`Congrats! You've reached ${tier} status`,
-				"Your rewards are about to expire",
-				`${tier} Member Exclusive: Double points this week`,
+				`🌟 You've earned ${points.toLocaleString()} bonus points!`,
+				`🏆 Congrats! You've unlocked ${tier} status!`,
+				`💎 ${tier} EXCLUSIVE: Double points this week!`,
+				`🎉 ${recipient?.firstName ?? "VIP"}, check your rewards balance!`,
+				`🔥 ${tier} Member: New perks just unlocked`,
 			]);
 
-			text = `Hi ${recipient?.firstName ?? "there"},
+			text = `${recipient?.firstName ?? "Hey there"}, you're a ROCKSTAR! 🌟
 
-Great news for our ${tier} member!
+Your ${tier} Status: ACTIVE ✓
+Points Balance: ${points.toLocaleString()} 🌟
 
-Your current points balance: ${points.toLocaleString()} points
+As a valued ${tier} member, you EXCLUSIVELY enjoy:
+✨ ${this.generateBenefit(context)}
+✨ ${this.generateBenefit(context)}
+✨ ${this.generateBenefit(context)}
+✨ ${this.generateBenefit(context)}
 
-As a ${tier} member, you enjoy:
-- ${this.generateBenefit(context)}
-- ${this.generateBenefit(context)}
-- ${this.generateBenefit(context)}
-- ${this.generateBenefit(context)}
+${faker.number.int({ min: 100, max: 1000 })} members just upgraded their status this week. Keep ${faker.company.buzzVerb()}ing to unlock even MORE perks!
 
-Visit ${brand.domain}/rewards to see your benefits.
+👉 VIEW ALL REWARDS: https://${brand.domain}/rewards
+
+${brand.tagline}
 
 ${brand.name}
 ${compliance.address}
@@ -528,7 +770,7 @@ ${compliance.address}
 Unsubscribe: ${compliance.unsubscribeUrl}`;
 		}
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = { subject, text, sender: brand.sender };
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -577,40 +819,73 @@ ${isBirthday ? '<p style="font-size: 24px; color: #333;">Enjoy <strong>25% OFF</
 		const compliance = this.generateCompliance(context, brand);
 		const recipient = recipients[0];
 
-		const discount = faker.helpers.arrayElement([20, 25, 30]);
+		const discount = faker.helpers.arrayElement([20, 25, 30, 40, 50]);
+		const daysAway = faker.number.int({ min: 30, max: 365 });
 		const timeAway = faker.helpers.arrayElement([
+			`${daysAway} days`,
 			"a while",
-			"some time",
 			"too long",
+			"ages",
+			"forever",
 		]);
 
+		// More aggressive win-back subjects
 		const subject = faker.helpers.arrayElement([
-			`We miss you! Come back for ${discount}% off`,
-			`It's been ${timeAway} - See what's new`,
-			"Is this goodbye? One last offer inside",
-			"A lot has changed since you left",
-			`${recipient?.firstName ?? "Friend"}, we want you back`,
+			`😢 We miss you! Here's ${discount}% off to come back`,
+			`💔 Is this goodbye, ${recipient?.firstName ?? "friend"}?`,
+			`🥺 ${recipient?.firstName ?? "Hey"}, where did you go?`,
+			`⚠️ FINAL NOTICE: ${discount}% off expires tonight`,
+			"We're breaking up... unless you come back 💔",
+			`👋 ${recipient?.firstName ?? "Friend"}, it's been ${timeAway}...`,
+			`🎁 A ${discount}% apology gift - please come back!`,
+			"Is there someone else? 😢 We can change!",
+			`🚨 LAST CHANCE: ${discount}% off before we say goodbye`,
+			"Re: We haven't heard from you...",
+			`${recipient?.firstName ?? "Hey"} - did we do something wrong?`,
+			`One last offer before we remove you (${discount}% off)`,
 		]);
 
-		const text = `Hi ${recipient?.firstName ?? "there"},
+		const guiltyMessage = faker.helpers.arrayElement([
+			`It's been ${timeAway} since your last visit. We've been waiting... 😢`,
+			`Your account has been lonely for ${daysAway} days.`,
+			"We noticed you've been away. Did we do something wrong?",
+			`${faker.number.int({ min: 50, max: 500 })} new products added since you left!`,
+			"A lot has changed. We think you'll like what you see.",
+		]);
 
-It's been ${timeAway} since we've seen you at ${brand.name}, and we miss you!
+		const desperateOffer = faker.helpers.arrayElement([
+			`${discount}% OFF everything - just for coming back!`,
+			`FREE shipping + ${discount}% off your entire order!`,
+			`${discount}% off + a FREE ${faker.commerce.product()} with any purchase!`,
+			`Double points + ${discount}% off - we're serious about winning you back!`,
+		]);
+
+		const text = `${recipient?.firstName ?? "Hey there"},
+
+${guiltyMessage}
+
+We really, REALLY want you back. So here's what we're offering:
+
+🎁 ${desperateOffer}
+
+>>> USE CODE: COMEBACK${discount} <<<
 
 ${this.generateMarketingBody(context, brand)}
 
-As a special welcome back offer, here's ${discount}% off your next order.
+This offer expires in 48 hours. After that... well, we might have to say goodbye. 😢
 
-Use code WEBACK${discount} at checkout.
+👉 COME BACK NOW: https://${brand.domain}/welcome-back
 
-We hope to see you soon!
+We hope to see you soon (please?) 🙏
 
 The ${brand.name} Team
 
 ${compliance.address}
 
-Unsubscribe: ${compliance.unsubscribeUrl}`;
+Unsubscribe: ${compliance.unsubscribeUrl}
+You're receiving this because we miss having you as a ${brand.name} customer.`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = { subject, text, sender: brand.sender };
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>

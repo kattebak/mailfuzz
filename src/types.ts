@@ -193,6 +193,13 @@ export interface EmailContent {
 	 * Merged with engine-generated headers (engine headers take precedence).
 	 */
 	headers?: Record<string, string>;
+
+	/**
+	 * Optional sender override.
+	 * When provided, this sender is used instead of the context-provided sender.
+	 * Useful for plugins like newsletters that need consistent sender addresses.
+	 */
+	sender?: Participant;
 }
 
 /**
