@@ -1,6 +1,7 @@
 {
 	"$schema": "./src/config/schema.json",
 	"generate": {
+		"recipient": "info@example.com",
 		"output": "./maildir",
 		"count": 10000,
 		"seed": 2024,

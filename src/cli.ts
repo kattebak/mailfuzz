@@ -46,6 +46,7 @@ GENERATE OPTIONS:
   -s, --seed <number>       Random seed for deterministic generation
   -p, --participants <n>    Max participants in pool (default: 20)
   --conversations <n>       Max conversation threads (default: 30)
+  --to <email>              Fixed recipient (all messages addressed to this)
   --start-date <date>       Oldest message date (default: 30 days ago)
   --end-date <date>         Newest message date (default: now)
   --html-probability <n>    Probability of HTML content 0-1 (default: 0.7)
@@ -119,6 +120,7 @@ interface ResolvedGenerateOptions {
 	locales: LocaleWeights;
 	fallbackLocale: string;
 	quiet: boolean;
+	recipient?: string;
 }
 
 const parseDate = (value: string): Date => {
@@ -227,6 +229,7 @@ const resolveGenerateOptions = (
 		locales: config.locales,
 		fallbackLocale: config.fallbackLocale,
 		quiet: config.quiet,
+		recipient: config.recipient,
 	};
 };
 
@@ -315,6 +318,7 @@ const runGenerate = async (args: string[]): Promise<void> => {
 		htmlProbability: options.htmlProbability,
 		replyProbability: options.replyProbability,
 		forwardProbability: options.forwardProbability,
+		recipient: options.recipient,
 	});
 
 	const writer = new MaildirWriter(options.output);

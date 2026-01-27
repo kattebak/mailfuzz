@@ -69,7 +69,7 @@ export const generateCliOptions: Record<string, CliOptionMeta> = {
 		schemaPath: "generate.unreadProbability",
 		type: "string",
 	},
-	recipient: {
+	to: {
 		schemaPath: "generate.recipient",
 		type: "string",
 	},
