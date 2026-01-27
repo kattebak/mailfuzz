@@ -16,13 +16,13 @@ if [ ! -d "./maildir" ] || [ ! -d "./maildir/new" ]; then
     echo "   Created empty maildir at ./maildir"
 fi
 
-# Detect container runtime
-if command -v docker &> /dev/null; then
-    RUNTIME="docker"
-elif command -v podman &> /dev/null; then
+# Detect container runtime (prefer podman)
+if command -v podman &> /dev/null; then
     RUNTIME="podman"
+elif command -v docker &> /dev/null; then
+    RUNTIME="docker"
 else
-    echo "❌ Error: Neither docker nor podman found. Please install one."
+    echo "❌ Error: Neither podman nor docker found. Please install one."
     exit 1
 fi
 

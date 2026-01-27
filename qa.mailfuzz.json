@@ -2,12 +2,12 @@
 	"$schema": "./src/config/schema.json",
 	"generate": {
 		"output": "./maildir",
-		"count": 1000,
+		"count": 10000,
 		"seed": 2024,
 		"participants": 25,
 		"conversations": 40,
 		"htmlProbability": 0.85,
-		"replyProbability": 0.3,
+		"replyProbability": 0.7,
 		"forwardProbability": 0.05,
 		"unreadProbability": 0.35,
 		"allPlugins": true,
@@ -19,8 +19,8 @@
 			"file-upload": 0.3
 		},
 		"locales": {
-			"de": 0.35,
-			"fr": 0.25,
+			"de": 0.5,
+			"fr": 0.1,
 			"en": 0.3,
 			"es": 0.1
 		},

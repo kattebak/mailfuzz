@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   dovecot:
     image: dovecot/dovecot:2.3.21

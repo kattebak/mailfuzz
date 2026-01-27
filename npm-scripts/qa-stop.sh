@@ -6,13 +6,13 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
-# Detect container runtime
-if command -v docker &> /dev/null; then
-    RUNTIME="docker"
-elif command -v podman &> /dev/null; then
+# Detect container runtime (prefer podman)
+if command -v podman &> /dev/null; then
     RUNTIME="podman"
+elif command -v docker &> /dev/null; then
+    RUNTIME="docker"
 else
-    echo "❌ Error: Neither docker nor podman found."
+    echo "❌ Error: Neither podman nor docker found."
     exit 1
 fi
 
