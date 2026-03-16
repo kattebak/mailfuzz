@@ -52,6 +52,12 @@ runs:
         sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq dovecot-core dovecot-imapd postfix
 
+    - name: Stop services for configuration
+      shell: bash
+      run: |
+        sudo systemctl stop dovecot 2>/dev/null || true
+        sudo systemctl stop postfix 2>/dev/null || true
+
     - name: Create test user
       shell: bash
       run: |
@@ -95,15 +101,15 @@ runs:
         mailfuzz ${MAILFUZZ_ARGS}
 
         # Copy generated files into the test user's Maildir
-        sudo cp -a "${TEMP_MAILDIR}"/cur/* "${MAILDIR_PATH}/cur/" 2>/dev/null || true
-        sudo cp -a "${TEMP_MAILDIR}"/new/* "${MAILDIR_PATH}/new/" 2>/dev/null || true
+        sudo find "${TEMP_MAILDIR}/cur" -type f -exec cp {} "${MAILDIR_PATH}/cur/" \;
+        sudo find "${TEMP_MAILDIR}/new" -type f -exec cp {} "${MAILDIR_PATH}/new/" \;
 
         # Fix ownership so Dovecot can read the Maildir
         sudo chown -R "${TEST_USER}:${TEST_USER}" "${MAILDIR_PATH}"
         sudo chmod -R 700 "${MAILDIR_PATH}"
 
         # Count actual messages (Maildir files in cur/ and new/)
-        ACTUAL_COUNT=$(find "${MAILDIR_PATH}/cur" "${MAILDIR_PATH}/new" -type f 2>/dev/null | wc -l)
+        ACTUAL_COUNT=$(sudo find "${MAILDIR_PATH}/cur" "${MAILDIR_PATH}/new" -type f 2>/dev/null | wc -l)
         echo "Generated ${ACTUAL_COUNT} messages in ${MAILDIR_PATH}"
 
         # Cleanup
@@ -115,14 +121,14 @@ runs:
     - name: Start Dovecot
       shell: bash
       run: |
-        sudo dovecot
-        sleep 1
+        sudo systemctl start dovecot
+        sleep 2
         echo "Dovecot IMAP server started on port 143"
 
     - name: Start Postfix
       shell: bash
       run: |
-        sudo postfix start
+        sudo systemctl start postfix
         sleep 1
         echo "Postfix started for local delivery"
 
