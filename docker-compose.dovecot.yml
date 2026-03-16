@@ -2,6 +2,7 @@ services:
   dovecot:
     image: dovecot/dovecot:2.3.21
     container_name: mailfuzz-dovecot
+    profiles: ["qa"]
     ports:
       - "1143:143"   # IMAP on non-privileged port
     volumes:
@@ -16,6 +17,7 @@ services:
       context: .
       dockerfile: Containerfile
     container_name: mailfuzz
+    profiles: ["mailfuzz"]
     ports:
       - "1143:143"
     environment:
