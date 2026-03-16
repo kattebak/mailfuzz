@@ -78,9 +78,10 @@ runs:
       run: |
         TEST_USER="${{ inputs.test-user }}"
         MAILDIR_PATH="/home/${TEST_USER}/Maildir"
+        TEMP_MAILDIR=$(mktemp -d)
 
         MAILFUZZ_ARGS="generate"
-        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --output ${MAILDIR_PATH}"
+        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --output ${TEMP_MAILDIR}"
         MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --count ${{ inputs.message-count }}"
         MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --seed ${{ inputs.seed }}"
         MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --all-plugins"
@@ -93,6 +94,10 @@ runs:
 
         mailfuzz ${MAILFUZZ_ARGS}
 
+        # Copy generated files into the test user's Maildir
+        sudo cp -a "${TEMP_MAILDIR}"/cur/* "${MAILDIR_PATH}/cur/" 2>/dev/null || true
+        sudo cp -a "${TEMP_MAILDIR}"/new/* "${MAILDIR_PATH}/new/" 2>/dev/null || true
+
         # Fix ownership so Dovecot can read the Maildir
         sudo chown -R "${TEST_USER}:${TEST_USER}" "${MAILDIR_PATH}"
         sudo chmod -R 700 "${MAILDIR_PATH}"
@@ -100,6 +105,9 @@ runs:
         # Count actual messages (Maildir files in cur/ and new/)
         ACTUAL_COUNT=$(find "${MAILDIR_PATH}/cur" "${MAILDIR_PATH}/new" -type f 2>/dev/null | wc -l)
         echo "Generated ${ACTUAL_COUNT} messages in ${MAILDIR_PATH}"
+
+        # Cleanup
+        rm -rf "${TEMP_MAILDIR}"
 
         echo "maildir-path=${MAILDIR_PATH}" >> "$GITHUB_OUTPUT"
         echo "message-count=${ACTUAL_COUNT}" >> "$GITHUB_OUTPUT"
