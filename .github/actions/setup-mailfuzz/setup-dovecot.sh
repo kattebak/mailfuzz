@@ -25,7 +25,8 @@ chmod -R 700 "/home/${TEST_USER}/Maildir"
 cat <<EOF > /etc/dovecot/users
 ${TEST_USER}:{PLAIN}${TEST_PASS}:${USER_ID}:${GROUP_ID}::/home/${TEST_USER}
 EOF
-chmod 600 /etc/dovecot/users
+chown root:dovecot /etc/dovecot/users
+chmod 640 /etc/dovecot/users
 
 # Replace the entire Dovecot config with a minimal one
 # This avoids conflicts with default configs
