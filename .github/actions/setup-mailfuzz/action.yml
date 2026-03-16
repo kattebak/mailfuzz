@@ -3,7 +3,7 @@ description: "Set up a complete mail testing environment with Dovecot IMAP, Post
 
 inputs:
   config:
-    description: "Path to a mailfuzz config file"
+    description: "Path to a mailfuzz config file. When provided, the config is the source of truth and message-count/seed/plugin inputs are ignored."
     required: false
     default: ""
   test-user:
@@ -86,19 +86,22 @@ runs:
         MAILDIR_PATH="/home/${TEST_USER}/Maildir"
         TEMP_MAILDIR=$(mktemp -d)
 
-        MAILFUZZ_ARGS="generate"
-        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --output ${TEMP_MAILDIR}"
-        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --count ${{ inputs.message-count }}"
-        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --seed ${{ inputs.seed }}"
-        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --all-plugins"
-        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --to ${TEST_USER}@localhost"
-
         CONFIG="${{ inputs.config }}"
         if [ -n "${CONFIG}" ]; then
-          MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --config ${CONFIG}"
+          # Config file is the source of truth — only set output and recipient
+          mailfuzz generate \
+            --config "${CONFIG}" \
+            --output "${TEMP_MAILDIR}" \
+            --to "${TEST_USER}@localhost"
+        else
+          # No config file — use action inputs as CLI flags
+          mailfuzz generate \
+            --output "${TEMP_MAILDIR}" \
+            --count "${{ inputs.message-count }}" \
+            --seed "${{ inputs.seed }}" \
+            --all-plugins \
+            --to "${TEST_USER}@localhost"
         fi
-
-        mailfuzz ${MAILFUZZ_ARGS}
 
         # Copy generated files into the test user's Maildir
         sudo find "${TEMP_MAILDIR}/cur" -type f -exec cp {} "${MAILDIR_PATH}/cur/" \;

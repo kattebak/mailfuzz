@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  e2e-imap-test:
-    name: End-to-end IMAP verification
+  e2e-default:
+    name: E2E with default settings
     runs-on: ubuntu-latest
 
     steps:
@@ -59,8 +59,63 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "## E2E Mail Test Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "## E2E Mail Test Results (default)" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Maildir path:** ${{ steps.mail-setup.outputs.maildir-path }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Messages generated:** ${{ steps.mail-setup.outputs.message-count }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **IMAP server:** localhost:143" >> "$GITHUB_STEP_SUMMARY"
+
+  e2e-config:
+    name: E2E with config file
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build mailfuzz
+        run: npm run build
+
+      - name: Install mailfuzz globally from local build
+        run: sudo npm install -g .
+
+      - name: Setup mail server with config file
+        uses: ./.github/actions/setup-mailfuzz
+        id: mail-setup
+        with:
+          config: .github/actions/setup-mailfuzz/ci.mailfuzz.json
+          test-user: testuser
+          test-password: testpass
+          install-mailfuzz: "false"
+
+      - name: Debug - show Dovecot logs on failure
+        if: failure()
+        run: |
+          sudo cat /var/log/dovecot.log 2>/dev/null || true
+          sudo cat /var/log/dovecot-info.log 2>/dev/null || true
+
+      - name: Verify IMAP server with config-driven inbox
+        uses: ./.github/actions/verify-imap
+        with:
+          username: testuser
+          password: testpass
+          expected-messages: "25"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## E2E Mail Test Results (config file)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Config:** ci.mailfuzz.json" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Maildir path:** ${{ steps.mail-setup.outputs.maildir-path }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Messages generated:** ${{ steps.mail-setup.outputs.message-count }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **IMAP server:** localhost:143" >> "$GITHUB_STEP_SUMMARY"
