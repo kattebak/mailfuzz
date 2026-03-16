@@ -22,25 +22,22 @@ chown -R "${TEST_USER}:${TEST_USER}" "/home/${TEST_USER}/Maildir"
 chmod -R 700 "/home/${TEST_USER}/Maildir"
 
 # Create Dovecot users file (passwd-file format)
-# Format: user:{SCHEME}password:uid:gid::home
 cat <<EOF > /etc/dovecot/users
 ${TEST_USER}:{PLAIN}${TEST_PASS}:${USER_ID}:${GROUP_ID}::/home/${TEST_USER}
 EOF
 chmod 600 /etc/dovecot/users
 
-# Write a single Dovecot override config
-cat <<'EOF' > /etc/dovecot/conf.d/99-mailfuzz.conf
-# Mailfuzz test configuration - overrides defaults
+# Replace the entire Dovecot config with a minimal one
+# This avoids conflicts with default configs
+cat <<'EOF' > /etc/dovecot/dovecot.conf
+# Minimal Dovecot configuration for CI testing
+
+protocols = imap
+listen = *
 
 # Disable SSL for local testing
 ssl = no
 disable_plaintext_auth = no
-
-# Listen on all interfaces
-listen = *
-
-# Protocols
-protocols = imap
 
 # Auth mechanisms
 auth_mechanisms = plain login
@@ -62,10 +59,14 @@ mail_location = maildir:~/Maildir
 # Logging
 log_path = /var/log/dovecot.log
 info_log_path = /var/log/dovecot-info.log
-EOF
 
-# Disable the default system auth to avoid conflicts
-sed -i 's|^!include auth-system.conf.ext|#!include auth-system.conf.ext|' /etc/dovecot/conf.d/10-auth.conf 2>/dev/null || true
+# Service configuration
+service imap-login {
+  inet_listener imap {
+    port = 143
+  }
+}
+EOF
 
 # Configure Postfix for local-only delivery with Maildir
 postconf -e "inet_interfaces = loopback-only"
