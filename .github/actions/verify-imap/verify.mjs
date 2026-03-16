@@ -1,5 +1,5 @@
-import { ImapFlow } from "imapflow";
 import { appendFileSync } from "node:fs";
+import { ImapFlow } from "imapflow";
 
 const host = process.env.IMAP_HOST || "localhost";
 const port = Number(process.env.IMAP_PORT || "143");
