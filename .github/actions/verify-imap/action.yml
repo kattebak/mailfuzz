@@ -1,0 +1,57 @@
+name: "Verify IMAP Server"
+description: "Verifies a local IMAP server is running and serving emails correctly"
+
+inputs:
+  imap-host:
+    description: "IMAP server hostname"
+    required: false
+    default: "localhost"
+  imap-port:
+    description: "IMAP server port"
+    required: false
+    default: "143"
+  username:
+    description: "IMAP authentication username"
+    required: false
+    default: "testuser"
+  password:
+    description: "IMAP authentication password"
+    required: false
+    default: "testpass"
+  expected-messages:
+    description: "Minimum number of messages expected (0 = just check connection)"
+    required: false
+    default: "0"
+
+outputs:
+  message-count:
+    description: "Actual number of messages found in INBOX"
+    value: ${{ steps.verify.outputs.message-count }}
+  success:
+    description: "Whether the verification succeeded"
+    value: ${{ steps.verify.outputs.success }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Install imapflow
+      shell: bash
+      run: |
+        cd "${{ github.action_path }}"
+        npm install --no-save imapflow
+
+    - name: Verify IMAP server
+      id: verify
+      shell: bash
+      env:
+        IMAP_HOST: ${{ inputs.imap-host }}
+        IMAP_PORT: ${{ inputs.imap-port }}
+        IMAP_USER: ${{ inputs.username }}
+        IMAP_PASS: ${{ inputs.password }}
+        EXPECTED_MESSAGES: ${{ inputs.expected-messages }}
+      run: node "${{ github.action_path }}/verify.mjs"

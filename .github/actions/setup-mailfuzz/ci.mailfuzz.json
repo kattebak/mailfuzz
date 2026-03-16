@@ -1,0 +1,28 @@
+{
+	"$schema": "https://mailfuzz.dev/schemas/1.0.0/schema.json",
+	"generate": {
+		"count": 25,
+		"seed": 2024,
+		"participants": 10,
+		"conversations": 8,
+		"htmlProbability": 0.85,
+		"replyProbability": 0.7,
+		"forwardProbability": 0.05,
+		"unreadProbability": 0.35,
+		"allPlugins": true,
+		"pluginWeights": {
+			"newsletter": 2.5,
+			"marketing": 2.0,
+			"spam": 1.5,
+			"standard": 1.0,
+			"file-upload": 0.3
+		},
+		"locales": {
+			"de": 0.5,
+			"fr": 0.1,
+			"en": 0.3,
+			"es": 0.1
+		},
+		"fallbackLocale": "en"
+	}
+}

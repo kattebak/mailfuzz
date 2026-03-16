@@ -294,6 +294,111 @@ msgs1[0].subject === msgs2[0].subject; // true
 
 Note: Maildir filenames differ between runs (they include timestamps and PIDs) but email content is deterministic.
 
+## GitHub Actions
+
+Mailfuzz provides composite GitHub Actions for setting up a complete mail testing environment in CI.
+
+### Setup Mailfuzz Action (`.github/actions/setup-mailfuzz`)
+
+Sets up a complete mail testing environment on GitHub Actions runners with Dovecot IMAP + Postfix. Installs system packages, creates a test user, generates emails with mailfuzz, and starts the mail services.
+
+**Inputs:**
+
+| Input | Description | Required | Default |
+| --- | --- | --- | --- |
+| `config` | Path to a mailfuzz config file | No | `""` |
+| `test-user` | Username for the IMAP test account | No | `testuser` |
+| `test-password` | Password for the IMAP test account | No | `testpass` |
+| `message-count` | Number of messages to generate | No | `50` |
+| `seed` | Seed for deterministic generation | No | `1984` |
+| `install-mailfuzz` | Whether to install mailfuzz from npm (set to `false` if already installed in workspace) | No | `true` |
+
+**Outputs:**
+
+| Output | Description |
+| --- | --- |
+| `imap-host` | IMAP server hostname (`localhost`) |
+| `imap-port` | IMAP server port (`143`) |
+| `maildir-path` | Path to the generated Maildir |
+| `message-count` | Actual number of messages generated |
+
+**Usage from an external repo:**
+
+```yaml
+- uses: kattebak/mailfuzz/.github/actions/setup-mailfuzz@main
+  with:
+    message-count: "100"
+    seed: "42"
+```
+
+**Usage from the mailfuzz repo:**
+
+```yaml
+- uses: ./.github/actions/setup-mailfuzz
+```
+
+### Verify IMAP Action (`.github/actions/verify-imap`)
+
+Verifies a local IMAP server is running and serving emails correctly. Connects via IMAP, authenticates, and checks the message count in the inbox.
+
+**Inputs:**
+
+| Input | Description | Required | Default |
+| --- | --- | --- | --- |
+| `imap-host` | IMAP server hostname | No | `localhost` |
+| `imap-port` | IMAP server port | No | `143` |
+| `username` | IMAP authentication username | No | `testuser` |
+| `password` | IMAP authentication password | No | `testpass` |
+| `expected-messages` | Minimum number of messages expected (0 = just check connection) | No | `0` |
+
+**Outputs:**
+
+| Output | Description |
+| --- | --- |
+| `message-count` | Actual number of messages found in INBOX |
+| `success` | Whether the verification succeeded |
+
+**Usage:**
+
+```yaml
+- uses: kattebak/mailfuzz/.github/actions/verify-imap@main
+  with:
+    expected-messages: "50"
+```
+
+### Complete Workflow Example
+
+```yaml
+name: E2E Mail Tests
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: kattebak/mailfuzz/.github/actions/setup-mailfuzz@main
+        id: mailserver
+        with:
+          message-count: "100"
+          seed: "42"
+
+      - uses: kattebak/mailfuzz/.github/actions/verify-imap@main
+        with:
+          expected-messages: "100"
+
+      - name: Run tests against IMAP server
+        env:
+          IMAP_HOST: ${{ steps.mailserver.outputs.imap-host }}
+          IMAP_PORT: ${{ steps.mailserver.outputs.imap-port }}
+        run: npm test
+```
+
 ## Development
 
 ```bash
