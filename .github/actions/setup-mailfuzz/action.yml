@@ -1,0 +1,125 @@
+name: "Setup Mailfuzz"
+description: "Set up a complete mail testing environment with Dovecot IMAP, Postfix, and mailfuzz-generated emails"
+
+inputs:
+  config:
+    description: "Path to a mailfuzz config file"
+    required: false
+    default: ""
+  test-user:
+    description: "Username for the IMAP test account"
+    required: false
+    default: "testuser"
+  test-password:
+    description: "Password for the IMAP test account"
+    required: false
+    default: "testpass"
+  message-count:
+    description: "Number of messages to generate"
+    required: false
+    default: "50"
+  seed:
+    description: "Seed for deterministic generation"
+    required: false
+    default: "1984"
+  install-mailfuzz:
+    description: "Whether to install mailfuzz from npm (set to false if already installed in workspace)"
+    required: false
+    default: "true"
+
+outputs:
+  imap-host:
+    description: "IMAP server hostname"
+    value: "localhost"
+  imap-port:
+    description: "IMAP server port"
+    value: "143"
+  maildir-path:
+    description: "Path to the generated Maildir"
+    value: ${{ steps.generate.outputs.maildir-path }}
+  message-count:
+    description: "Actual number of messages generated"
+    value: ${{ steps.generate.outputs.message-count }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install system packages
+      shell: bash
+      run: |
+        sudo debconf-set-selections <<< "postfix postfix/mailname string localhost"
+        sudo debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Local only'"
+        sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq dovecot-core dovecot-imapd postfix
+
+    - name: Create test user
+      shell: bash
+      run: |
+        sudo useradd -m -s /bin/bash "${{ inputs.test-user }}" || true
+        echo "${{ inputs.test-user }}:${{ inputs.test-password }}" | sudo chpasswd
+
+    - name: Configure Dovecot and Postfix
+      shell: bash
+      env:
+        TEST_USER: ${{ inputs.test-user }}
+        TEST_PASS: ${{ inputs.test-password }}
+      run: |
+        sudo bash "${{ github.action_path }}/setup-dovecot.sh"
+
+    - name: Install mailfuzz from npm
+      if: inputs.install-mailfuzz == 'true'
+      shell: bash
+      run: |
+        sudo npm install -g @kattebak/mailfuzz
+
+    - name: Generate emails
+      id: generate
+      shell: bash
+      run: |
+        TEST_USER="${{ inputs.test-user }}"
+        MAILDIR_PATH="/home/${TEST_USER}/Maildir"
+
+        MAILFUZZ_ARGS="generate"
+        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --output ${MAILDIR_PATH}"
+        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --count ${{ inputs.message-count }}"
+        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --seed ${{ inputs.seed }}"
+        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --all-plugins"
+        MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --to ${TEST_USER}@localhost"
+
+        CONFIG="${{ inputs.config }}"
+        if [ -n "${CONFIG}" ]; then
+          MAILFUZZ_ARGS="${MAILFUZZ_ARGS} --config ${CONFIG}"
+        fi
+
+        mailfuzz ${MAILFUZZ_ARGS}
+
+        # Fix ownership so Dovecot can read the Maildir
+        sudo chown -R "${TEST_USER}:${TEST_USER}" "${MAILDIR_PATH}"
+        sudo chmod -R 700 "${MAILDIR_PATH}"
+
+        # Count actual messages (Maildir files in cur/ and new/)
+        ACTUAL_COUNT=$(find "${MAILDIR_PATH}/cur" "${MAILDIR_PATH}/new" -type f 2>/dev/null | wc -l)
+        echo "Generated ${ACTUAL_COUNT} messages in ${MAILDIR_PATH}"
+
+        echo "maildir-path=${MAILDIR_PATH}" >> "$GITHUB_OUTPUT"
+        echo "message-count=${ACTUAL_COUNT}" >> "$GITHUB_OUTPUT"
+
+    - name: Start Dovecot
+      shell: bash
+      run: |
+        sudo dovecot
+        sleep 1
+        echo "Dovecot IMAP server started on port 143"
+
+    - name: Start Postfix
+      shell: bash
+      run: |
+        sudo postfix start
+        sleep 1
+        echo "Postfix started for local delivery"
+
+    - name: Verify Dovecot authentication
+      shell: bash
+      run: |
+        sudo doveadm auth test "${{ inputs.test-user }}" "${{ inputs.test-password }}"
+        echo "Authentication verified successfully"
