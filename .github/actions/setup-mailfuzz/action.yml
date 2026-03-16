@@ -64,7 +64,7 @@ runs:
         TEST_USER: ${{ inputs.test-user }}
         TEST_PASS: ${{ inputs.test-password }}
       run: |
-        sudo bash "${{ github.action_path }}/setup-dovecot.sh"
+        sudo TEST_USER="${TEST_USER}" TEST_PASS="${TEST_PASS}" bash "${{ github.action_path }}/setup-dovecot.sh"
 
     - name: Install mailfuzz from npm
       if: inputs.install-mailfuzz == 'true'
