@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-RUN apk add --no-cache dovecot dovecot-imapd
+RUN apk add --no-cache dovecot
 
 RUN npm install -g @kattebak/mailfuzz
 

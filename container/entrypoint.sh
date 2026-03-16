@@ -1,5 +1,5 @@
 #!/bin/sh
-set -euo pipefail
+set -eu
 
 MESSAGE_COUNT="${MESSAGE_COUNT:-50}"
 SEED="${SEED:-1984}"
