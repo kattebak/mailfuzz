@@ -399,6 +399,78 @@ jobs:
         run: npm test
 ```
 
+## Container Image
+
+Mailfuzz is available as a container image at `ghcr.io/kattebak/mailfuzz`. It bundles Dovecot and mailfuzz into a single image that generates synthetic emails on startup and serves them over IMAP — no local installation required.
+
+### Quick Start
+
+```bash
+# Pull and run (generates 50 emails with default settings)
+podman run -p 1143:143 ghcr.io/kattebak/mailfuzz
+
+# Connect any IMAP client to localhost:1143
+# Username: vmail  Password: testpass
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `MESSAGE_COUNT` | `50` | Number of emails to generate |
+| `SEED` | `1984` | Seed for deterministic generation |
+| `TEST_PASSWORD` | `testpass` | IMAP login password |
+| `ALL_PLUGINS` | `true` | Use all mailfuzz content plugins |
+
+### Custom Configuration
+
+Mount a mailfuzz config file to override default generation behavior:
+
+```bash
+podman run -p 1143:143 \
+  -v ./my-config.json:/etc/mailfuzz/config.json:ro \
+  ghcr.io/kattebak/mailfuzz
+```
+
+When a config file is mounted, environment variables like `MESSAGE_COUNT` and `SEED` are ignored — the config file is the source of truth.
+
+### Docker Compose
+
+The `docker-compose.dovecot.yml` file provides two profiles:
+
+```bash
+# Self-contained (generates emails on startup)
+podman compose --profile mailfuzz up
+
+# Or the QA workflow (mount pre-generated maildir)
+podman compose --profile qa up
+```
+
+### Building Locally
+
+```bash
+podman build -t mailfuzz-dovecot -f Containerfile .
+podman run -p 1143:143 mailfuzz-dovecot
+```
+
+### Version Tags
+
+Images are published to `ghcr.io/kattebak/mailfuzz` with the following tags:
+
+- `latest` — built from main branch
+- `1.2.3` — specific release version
+- `1` — latest release in major version
+
+### Security Warning
+
+This container is for **LOCAL DEVELOPMENT ONLY**:
+
+- Plain text authentication (no TLS/SSL)
+- No encryption
+- Debug logging enabled
+
+**Never expose to a network or use in production.**
+
 ## Development
 
 ```bash
