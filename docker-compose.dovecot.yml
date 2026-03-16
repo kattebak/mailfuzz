@@ -10,3 +10,18 @@ services:
     environment:
       - USER_PASSWORD={PLAIN}testpass
     restart: unless-stopped
+
+  mailfuzz:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: mailfuzz
+    ports:
+      - "1143:143"
+    environment:
+      - MESSAGE_COUNT=50
+      - SEED=1984
+      - TEST_PASSWORD=testpass
+    # Optional: mount a config file
+    # volumes:
+    #   - ./my-config.json:/etc/mailfuzz/config.json:ro
