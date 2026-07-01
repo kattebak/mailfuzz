@@ -135,7 +135,11 @@ ${brand} Security Team
 
 This is an automated message. Please do not reply.`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = {
+			subject,
+			text,
+			headers: this.automatedHeaders(faker),
+		};
 
 		if (requestHtml) {
 			result.html = this.generatePhishingHtml(brand, fakeUrl, urgency);
@@ -253,7 +257,11 @@ Best Regards,
 ${firstName} ${lastName}`;
 		}
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = {
+			subject,
+			text,
+			headers: this.automatedHeaders(faker),
+		};
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -302,7 +310,11 @@ ${urgency}
 
 To unsubscribe reply with STOP`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = {
+			subject,
+			text,
+			headers: this.automatedHeaders(faker),
+		};
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -376,7 +388,11 @@ Congratulations once again!
 ${lotteryName}
 "Making Dreams Come True"`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = {
+			subject,
+			text,
+			headers: this.automatedHeaders(faker),
+		};
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -430,7 +446,11 @@ Visit: www.${siteName.toLowerCase()}.${faker.helpers.arrayElement(SUSPICIOUS_TLD
 
 ${this.capitalize(faker.word.verb())} ${faker.word.noun()}.`;
 
-		const result: EmailContent = { subject, text };
+		const result: EmailContent = {
+			subject,
+			text,
+			headers: this.automatedHeaders(faker),
+		};
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -512,6 +532,7 @@ ${faker.person.firstName()}`,
 		const result: EmailContent = {
 			subject: template.subject,
 			text: template.text,
+			headers: this.automatedHeaders(faker),
 		};
 
 		if (requestHtml) {
@@ -598,6 +619,20 @@ ${template.text
 			() => `${this.capitalize(faker.word.adjective())} ${faker.word.noun()}!`,
 		];
 		return faker.helpers.arrayElement(patterns)().toUpperCase();
+	}
+
+	/**
+	 * Build a header that marks the message as machine-generated bulk mail.
+	 * Either Precedence: bulk or Auto-Submitted: auto-generated is enough for a
+	 * classifier to treat the message as automated rather than personal.
+	 */
+	private automatedHeaders(
+		faker: GenerationContext["faker"],
+	): Record<string, string> {
+		if (faker.datatype.boolean()) {
+			return { "Auto-Submitted": "auto-generated" };
+		}
+		return { Precedence: "bulk" };
 	}
 
 	private escapeHtml(text: string): string {

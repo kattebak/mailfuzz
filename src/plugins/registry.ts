@@ -4,6 +4,7 @@ import { MarketingEmailPlugin } from "./marketing-email-plugin.js";
 import { NewsletterEmailPlugin } from "./newsletter-email-plugin.js";
 import { SpamEmailPlugin } from "./spam-email-plugin.js";
 import { StandardEmailPlugin } from "./standard-email-plugin.js";
+import { TransactionalEmailPlugin } from "./transactional-email-plugin.js";
 
 /**
  * All available plugins in the system.
@@ -15,6 +16,7 @@ export const ALL_PLUGINS: readonly EmailPlugin[] = [
 	new NewsletterEmailPlugin(),
 	new SpamEmailPlugin(),
 	new FileUploadEmailPlugin(),
+	new TransactionalEmailPlugin(),
 ];
 
 /**
