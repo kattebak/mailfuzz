@@ -1,7 +1,8 @@
-import type {
-	GenerateConfig,
-	MailfuzzConfig,
-	ValidateConfig,
+import {
+	type GenerateConfig,
+	ImageModeSchema,
+	type MailfuzzConfig,
+	type ValidateConfig,
 } from "./schema.js";
 
 /**
@@ -22,6 +23,7 @@ export interface GenerateCliValues {
 	"unread-probability"?: string;
 	to?: string;
 	quiet?: boolean;
+	images?: string;
 	plugins?: string;
 	"all-plugins"?: boolean;
 	plugin?: string[];
@@ -104,6 +106,7 @@ export const mergeGenerateConfig = (
 		),
 		recipient: cliValues.to ?? base.recipient,
 		quiet: cliValues.quiet ?? base.quiet ?? false,
+		images: resolveImageMode(cliValues.images, base.images),
 		plugins: cliPlugins ?? base.plugins ?? ["standard"],
 		allPlugins: cliValues["all-plugins"] ?? base.allPlugins ?? false,
 		pluginWeights: mergeRecords(base.pluginWeights, cliPluginWeights),
@@ -128,6 +131,26 @@ export const mergeValidateConfig = (
 	return {
 		skipContent: cliValues["skip-content"] ?? base.skipContent ?? false,
 	};
+};
+
+/**
+ * Resolve the image mode from CLI or config, validating at the boundary.
+ * Defaults to "local".
+ */
+const resolveImageMode = (
+	cliValue: string | undefined,
+	configValue: GenerateConfig["images"] | undefined,
+): GenerateConfig["images"] => {
+	if (cliValue !== undefined) {
+		const parsed = ImageModeSchema.safeParse(cliValue);
+		if (!parsed.success) {
+			throw new Error(
+				`Invalid --images value: '${cliValue}'. Expected 'local' or 'kittens'.`,
+			);
+		}
+		return parsed.data;
+	}
+	return configValue ?? "local";
 };
 
 /**

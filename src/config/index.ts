@@ -7,6 +7,8 @@ export {
 	GenerateConfigSchema,
 	ValidateConfigSchema,
 	MailfuzzConfigSchema,
+	ImageModeSchema,
+	type ImageMode,
 	type GenerateConfig,
 	type ValidateConfig,
 	type MailfuzzConfig,

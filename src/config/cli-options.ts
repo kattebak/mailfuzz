@@ -78,6 +78,10 @@ export const generateCliOptions: Record<string, CliOptionMeta> = {
 		short: "q",
 		type: "boolean",
 	},
+	images: {
+		schemaPath: "generate.images",
+		type: "string",
+	},
 	plugins: {
 		schemaPath: "generate.plugins",
 		type: "string",

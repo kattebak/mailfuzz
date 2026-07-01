@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 /**
+ * Source for image attachments and inline images.
+ */
+export const ImageModeSchema = z.enum(["local", "kittens"]);
+export type ImageMode = z.infer<typeof ImageModeSchema>;
+
+/**
  * Schema for the generate command configuration.
  * Each field uses .describe() to provide help text for CLI and documentation.
  */
@@ -72,6 +78,10 @@ export const GenerateConfigSchema = z.object({
 		),
 
 	quiet: z.boolean().describe("Suppress progress output"),
+
+	images: ImageModeSchema.describe(
+		"Image source for attachments and inline images: 'local' (deterministic abstract art) or 'kittens' (cataas.com photos)",
+	),
 
 	plugins: z.array(z.string()).describe("Plugin IDs to use"),
 

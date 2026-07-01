@@ -8,6 +8,7 @@ import {
 	validateWeight,
 } from "../plugins/plugin-interface.js";
 import { StandardEmailPlugin } from "../plugins/standard-email-plugin.js";
+import type { ImageMode } from "../types.js";
 import type { LocaleWeights, Participant } from "../types.js";
 import type {
 	ContentConfig,
@@ -92,6 +93,11 @@ export interface MailfuzzGeneratorOptions {
 	 * @default 'en'
 	 */
 	fallbackLocale?: string;
+	/**
+	 * Source for image attachments and inline images.
+	 * @default 'local'
+	 */
+	images?: ImageMode;
 }
 
 /**
@@ -108,6 +114,7 @@ export class MailfuzzGenerator {
 	private readonly messageFactory: MessageFactory;
 	private readonly localeManager: LocaleManager;
 	private readonly fixedRecipient: Participant | undefined;
+	private readonly imageMode: ImageMode;
 
 	constructor(options: MailfuzzGeneratorOptions = {}) {
 		// Build config from options and defaults
@@ -126,6 +133,7 @@ export class MailfuzzGenerator {
 		// Store plugin weights and options
 		this.pluginWeights = options.pluginWeights ?? {};
 		this.pluginOptions = options.pluginOptions ?? {};
+		this.imageMode = options.images ?? "local";
 
 		// Register plugins
 		const providedPlugins = options.plugins ?? [new StandardEmailPlugin()];
@@ -506,6 +514,7 @@ export class MailfuzzGenerator {
 			sender,
 			recipients,
 			pluginConfig: this.pluginOptions[plugin.id],
+			imageMode: this.imageMode,
 		};
 	}
 

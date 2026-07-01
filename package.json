@@ -50,6 +50,7 @@
 		"@faker-js/faker": "^9.3.0",
 		"mailparser": "^3.7.2",
 		"nodemailer": "^6.9.16",
+		"pngjs": "^7.0.0",
 		"zod": "^3.24.1"
 	},
 	"devDependencies": {
@@ -57,6 +58,7 @@
 		"@types/mailparser": "^3.4.6",
 		"@types/node": "^22.10.5",
 		"@types/nodemailer": "^6.4.17",
+		"@types/pngjs": "^6.0.5",
 		"@vitest/coverage-v8": "^2.1.8",
 		"semantic-release": "^25.0.2",
 		"tsx": "^4.19.2",

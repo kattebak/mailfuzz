@@ -79,6 +79,11 @@
 							"type": "boolean",
 							"description": "Suppress progress output"
 						},
+						"images": {
+							"type": "string",
+							"enum": ["local", "kittens"],
+							"description": "Image source for attachments and inline images: 'local' (deterministic abstract art) or 'kittens' (cataas.com photos)"
+						},
 						"plugins": {
 							"type": "array",
 							"items": {

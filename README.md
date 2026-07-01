@@ -90,6 +90,7 @@ GENERATE OPTIONS:
   --unread-probability <n>  Probability of unread messages 0-1 (default: 0.2)
   --recipient <email>       Fixed recipient email for all messages
   -w, --weight <plugin=n>   Override plugin weight (can be repeated)
+  --images <mode>           Image source: local (default) or kittens
   -q, --quiet               Suppress progress output
 
 PLUGIN SELECTION (choose one):
