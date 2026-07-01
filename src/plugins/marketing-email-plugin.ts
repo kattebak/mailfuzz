@@ -314,7 +314,12 @@ ${compliance.address}
 Unsubscribe: ${compliance.unsubscribeUrl}
 This email was sent to ${recipient?.email ?? "you"} because you signed up for ${brand.name} promotions.`;
 
-		const result: EmailContent = { subject, text, sender: brand.sender };
+		const result: EmailContent = {
+			subject,
+			text,
+			sender: brand.sender,
+			headers: this.buildUnsubscribeHeaders(brand, compliance),
+		};
 
 		if (requestHtml) {
 			result.html = this.generatePromotionalHtml(
@@ -477,7 +482,12 @@ ${compliance.address}
 
 Unsubscribe: ${compliance.unsubscribeUrl}`;
 
-		const result: EmailContent = { subject, text, sender: brand.sender };
+		const result: EmailContent = {
+			subject,
+			text,
+			sender: brand.sender,
+			headers: this.buildUnsubscribeHeaders(brand, compliance),
+		};
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -599,7 +609,12 @@ ${compliance.address}
 Unsubscribe: ${compliance.unsubscribeUrl}
 Sent because you have items in your ${brand.name} cart.`;
 
-		const result: EmailContent = { subject, text, sender: brand.sender };
+		const result: EmailContent = {
+			subject,
+			text,
+			sender: brand.sender,
+			headers: this.buildUnsubscribeHeaders(brand, compliance),
+		};
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -770,7 +785,12 @@ ${compliance.address}
 Unsubscribe: ${compliance.unsubscribeUrl}`;
 		}
 
-		const result: EmailContent = { subject, text, sender: brand.sender };
+		const result: EmailContent = {
+			subject,
+			text,
+			sender: brand.sender,
+			headers: this.buildUnsubscribeHeaders(brand, compliance),
+		};
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -885,7 +905,12 @@ ${compliance.address}
 Unsubscribe: ${compliance.unsubscribeUrl}
 You're receiving this because we miss having you as a ${brand.name} customer.`;
 
-		const result: EmailContent = { subject, text, sender: brand.sender };
+		const result: EmailContent = {
+			subject,
+			text,
+			sender: brand.sender,
+			headers: this.buildUnsubscribeHeaders(brand, compliance),
+		};
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -986,6 +1011,21 @@ You're receiving this because we miss having you as a ${brand.name} customer.`;
 				`${this.capitalize(faker.word.adjective())} ${faker.word.adjective()} ${faker.word.noun()}`,
 		];
 		return faker.helpers.arrayElement(patterns)();
+	}
+
+	/**
+	 * Build RFC 2822 unsubscribe headers for opted-in commercial mail.
+	 * Marketing mail carries List-Unsubscribe but deliberately omits List-Id,
+	 * which is what keeps it classified as marketing rather than a newsletter.
+	 */
+	private buildUnsubscribeHeaders(
+		brand: Brand,
+		compliance: { address: string; unsubscribeUrl: string },
+	): Record<string, string> {
+		return {
+			"List-Unsubscribe": `<${compliance.unsubscribeUrl}>, <mailto:unsubscribe@${brand.domain}>`,
+			"List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+		};
 	}
 
 	private escapeHtml(text: string): string {

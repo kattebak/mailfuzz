@@ -19,3 +19,4 @@ export {
 } from "./registry.js";
 export { SpamEmailPlugin } from "./spam-email-plugin.js";
 export { StandardEmailPlugin } from "./standard-email-plugin.js";
+export { TransactionalEmailPlugin } from "./transactional-email-plugin.js";

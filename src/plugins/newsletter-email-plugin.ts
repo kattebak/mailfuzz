@@ -313,7 +313,12 @@ ${publication.authorTitle}, ${publication.name}
 Unsubscribe: https://${publication.domain}/unsubscribe
 ${publication.name} | ${publication.domain}`;
 
-		const result: EmailContent = { subject, text, sender: publication.sender };
+		const result: EmailContent = {
+			subject,
+			text,
+			sender: publication.sender,
+			headers: this.buildListHeaders(publication),
+		};
 
 		if (requestHtml) {
 			result.html = this.generateNewsletterHtml(
@@ -379,7 +384,12 @@ ${publication.name}
 
 Unsubscribe: https://${publication.domain}/unsubscribe`;
 
-		const result: EmailContent = { subject, text, sender: publication.sender };
+		const result: EmailContent = {
+			subject,
+			text,
+			sender: publication.sender,
+			headers: this.buildListHeaders(publication),
+		};
 
 		if (requestHtml) {
 			result.html = this.generateNewsletterHtml(
@@ -441,7 +451,12 @@ ${publication.authorName}
 ---
 Unsubscribe: https://${publication.domain}/unsubscribe`;
 
-		const result: EmailContent = { subject, text, sender: publication.sender };
+		const result: EmailContent = {
+			subject,
+			text,
+			sender: publication.sender,
+			headers: this.buildListHeaders(publication),
+		};
 
 		if (requestHtml) {
 			result.html = this.generateCuratedHtml(publication, intro, links);
@@ -507,7 +522,12 @@ ${publication.authorTitle}
 
 Unsubscribe: https://${publication.domain}/unsubscribe`;
 
-		const result: EmailContent = { subject, text, sender: publication.sender };
+		const result: EmailContent = {
+			subject,
+			text,
+			sender: publication.sender,
+			headers: this.buildListHeaders(publication),
+		};
 
 		if (requestHtml) {
 			result.html = this.generateNewsletterHtml(
@@ -582,7 +602,12 @@ P.S. ${faker.helpers.arrayElement([
 Unsubscribe: https://${publication.domain}/unsubscribe
 Reply to this email anytime - I read everything!`;
 
-		const result: EmailContent = { subject, text, sender: publication.sender };
+		const result: EmailContent = {
+			subject,
+			text,
+			sender: publication.sender,
+			headers: this.buildListHeaders(publication),
+		};
 
 		if (requestHtml) {
 			result.html = `<!DOCTYPE html>
@@ -1138,6 +1163,23 @@ ${links
 				`${this.capitalize(faker.word.verb())} ${faker.word.preposition()} ${this.capitalize(faker.word.noun())}`,
 		];
 		return faker.helpers.arrayElement(patterns)();
+	}
+
+	/**
+	 * Build RFC 2822 list headers that identify this message as a newsletter.
+	 * The combination of List-Unsubscribe and List-Id is what downstream
+	 * classifiers use to distinguish newsletters from generic marketing mail.
+	 */
+	private buildListHeaders(publication: Publication): Record<string, string> {
+		const listSlug = publication.name
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-|-$/g, "");
+		return {
+			"List-Unsubscribe": `<https://${publication.domain}/unsubscribe>, <mailto:unsubscribe@${publication.domain}>`,
+			"List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+			"List-Id": `${publication.name} <${listSlug}.${publication.domain}>`,
+		};
 	}
 
 	private escapeHtml(text: string): string {
