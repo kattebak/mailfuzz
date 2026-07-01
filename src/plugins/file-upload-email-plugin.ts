@@ -1,3 +1,4 @@
+import { getImage } from "../generator/image-source.js";
 import type {
 	Attachment,
 	EmailContent,
@@ -143,6 +144,25 @@ const FILE_TEMPLATES: FileTemplate[] = [
 	},
 	{
 		category: "media",
+		subjectTemplate: () => "Here are the photos",
+		bodyTemplate: ({ recipient, sender }) =>
+			`Hi ${recipient.firstName},\n\nHere's the photo from the shoot - let me know what you think.\n\nCheers,\n${sender.firstName}`,
+		filenameTemplate: ({ date }) => `photo-${date}.png`,
+		contentType: "image/png",
+		extension: "png",
+	},
+	{
+		category: "media",
+		subjectTemplate: ({ projectName }) => `${projectName} - Design preview`,
+		bodyTemplate: ({ recipient, projectName }) =>
+			`Hi ${recipient.firstName},\n\nAttached is a preview render for ${projectName}. Happy to iterate on it.\n\nRegards`,
+		filenameTemplate: ({ projectName }) =>
+			`${projectName.toLowerCase().replace(/\s+/g, "-")}-preview.png`,
+		contentType: "image/png",
+		extension: "png",
+	},
+	{
+		category: "media",
 		subjectTemplate: () => "Video files ready for download",
 		bodyTemplate: ({ recipient, projectName }) =>
 			`Hi ${recipient.firstName},\n\nThe video files for ${projectName} are ready.\n\nDue to the file size, I've compressed them into a zip archive. Full quality MP4s are inside.\n\nCheers`,
@@ -217,7 +237,7 @@ export class FileUploadEmailPlugin implements EmailPlugin {
 		},
 	};
 
-	generate(context: GenerationContext): EmailContent {
+	generate(context: GenerationContext): EmailContent | Promise<EmailContent> {
 		const { isForward, parentMessage } = context;
 
 		if (isForward && parentMessage) {
@@ -227,7 +247,9 @@ export class FileUploadEmailPlugin implements EmailPlugin {
 		return this.generateOriginal(context);
 	}
 
-	private generateOriginal(context: GenerationContext): EmailContent {
+	private async generateOriginal(
+		context: GenerationContext,
+	): Promise<EmailContent> {
 		const { faker, sender, recipients, requestHtml } = context;
 
 		const recipient = recipients[0];
@@ -254,7 +276,7 @@ export class FileUploadEmailPlugin implements EmailPlugin {
 		const text = template.bodyTemplate(templateContext);
 		const filename = template.filenameTemplate(templateContext);
 
-		const attachment = this.generateDummyAttachment(
+		const attachment = await this.generateAttachment(
 			context,
 			filename,
 			template.contentType,
@@ -334,11 +356,15 @@ Subject: ${parentMessage.subject}`;
 		return pattern();
 	}
 
-	private generateDummyAttachment(
+	private async generateAttachment(
 		context: GenerationContext,
 		filename: string,
 		contentType: string,
-	): Attachment {
+	): Promise<Attachment> {
+		if (contentType.startsWith("image/")) {
+			return this.generateImageAttachment(context, filename);
+		}
+
 		const { faker, pluginConfig } = context;
 
 		// Get size options from plugin config or use defaults
@@ -359,6 +385,29 @@ Subject: ${parentMessage.subject}`;
 			filename,
 			contentType,
 			content,
+		};
+	}
+
+	private async generateImageAttachment(
+		context: GenerationContext,
+		filename: string,
+	): Promise<Attachment> {
+		const { faker } = context;
+		const width = faker.number.int({ min: 480, max: 1200 });
+		const height = faker.number.int({ min: 360, max: 900 });
+
+		const image = await getImage({
+			faker,
+			mode: context.imageMode,
+			width,
+			height,
+		});
+		const extension = image.contentType.includes("png") ? "png" : "jpg";
+
+		return {
+			filename: filename.replace(/\.[^.]+$/, `.${extension}`),
+			contentType: image.contentType,
+			content: image.buffer,
 		};
 	}
 

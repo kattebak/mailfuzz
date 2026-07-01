@@ -23,6 +23,7 @@ describe("GenerateConfigSchema", () => {
 			forwardProbability: 0.2,
 			unreadProbability: 0.3,
 			quiet: true,
+			images: "local",
 			plugins: ["standard", "marketing"],
 			allPlugins: false,
 			pluginWeights: { marketing: 2.0 },

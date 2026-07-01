@@ -1,3 +1,4 @@
+import { attachHeroImage } from "../generator/image-source.js";
 import type {
 	EmailContent,
 	EmailPlugin,
@@ -99,11 +100,21 @@ export class MarketingEmailPlugin implements EmailPlugin {
 		canBeForward: false,
 		canBeOriginal: true,
 		supportsHtml: true,
-		supportsAttachments: false,
+		supportsAttachments: true,
 		supportsMultipleRecipients: false,
 	};
 
-	generate(context: GenerationContext): EmailContent {
+	async generate(context: GenerationContext): Promise<EmailContent> {
+		const content = this.generateByCategory(context);
+
+		if (context.requestHtml && content.html) {
+			await attachHeroImage(content, context, { width: 600, height: 200 });
+		}
+
+		return content;
+	}
+
+	private generateByCategory(context: GenerationContext): EmailContent {
 		const category = this.selectCategory(context);
 
 		switch (category) {

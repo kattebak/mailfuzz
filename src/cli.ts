@@ -6,6 +6,7 @@ import { parseArgs } from "node:util";
 import {
 	type GenerateCliValues,
 	type GenerateConfig,
+	type ImageMode,
 	type ValidateCliValues,
 	buildParseArgsOptions,
 	generateCliOptions,
@@ -54,6 +55,7 @@ GENERATE OPTIONS:
   --forward-probability <n> Probability of forward (default: 0.1)
   -w, --weight <plugin=n>   Override plugin weight (can be repeated)
   --plugin-opt <opt=val>    Set plugin option (can be repeated)
+  --images <mode>           Image source: local (default) or kittens
   -q, --quiet               Suppress progress output
   -c, --config <path>       Path to config file (default: auto-detect)
 
@@ -96,6 +98,7 @@ EXAMPLES:
   mailfuzz generate --locale en --locale de --locale fr
   mailfuzz generate --locale-weight en=0.7 --locale-weight de=0.2 --locale-weight fr=0.1
   mailfuzz generate --plugin-opt file-uploadMinSizeKb=100 --plugin-opt file-uploadMaxSizeKb=1000
+  mailfuzz generate --all-plugins --images kittens
   mailfuzz generate --config ./custom-config.json
   mailfuzz init
   mailfuzz plugins
@@ -121,6 +124,7 @@ interface ResolvedGenerateOptions {
 	fallbackLocale: string;
 	quiet: boolean;
 	recipient?: string;
+	images: ImageMode;
 }
 
 const parseDate = (value: string): Date => {
@@ -230,6 +234,7 @@ const resolveGenerateOptions = (
 		fallbackLocale: config.fallbackLocale,
 		quiet: config.quiet,
 		recipient: config.recipient,
+		images: config.images,
 	};
 };
 
@@ -319,6 +324,7 @@ const runGenerate = async (args: string[]): Promise<void> => {
 		replyProbability: options.replyProbability,
 		forwardProbability: options.forwardProbability,
 		recipient: options.recipient,
+		images: options.images,
 	});
 
 	const writer = new MaildirWriter(options.output);

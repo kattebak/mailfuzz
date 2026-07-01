@@ -1,6 +1,14 @@
 import type { Faker } from "@faker-js/faker";
 
 /**
+ * Source for image attachments and inline images.
+ * - `local`: deterministic abstract images rendered in-process (default).
+ * - `kittens`: real cat photos fetched from cataas.com, falling back to
+ *   `local` on any failure.
+ */
+export type ImageMode = "local" | "kittens";
+
+/**
  * Represents a participant in email communication.
  */
 export interface Participant {
@@ -140,6 +148,12 @@ export interface GenerationContext {
 	 * Plugin-specific configuration from user config.
 	 */
 	pluginConfig?: Record<string, unknown>;
+
+	/**
+	 * Source for image attachments and inline images.
+	 * Defaults to `local` when not provided.
+	 */
+	imageMode?: ImageMode;
 }
 
 /**
