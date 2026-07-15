@@ -38,9 +38,9 @@ const createMockContext = (
 describe("NewsletterEmailPlugin", () => {
 	const plugin = new NewsletterEmailPlugin();
 
-	it("sets both List-Unsubscribe and List-Id on every generated issue", () => {
+	it("sets both List-Unsubscribe and List-Id on every generated issue", async () => {
 		for (let seed = 0; seed < 40; seed++) {
-			const result = plugin.generate(createMockContext(seed));
+			const result = await plugin.generate(createMockContext(seed));
 
 			expect(result.headers?.["List-Unsubscribe"]).toBeDefined();
 			expect(result.headers?.["List-Unsubscribe"]).toMatch(
@@ -51,7 +51,7 @@ describe("NewsletterEmailPlugin", () => {
 		}
 	});
 
-	it("does not attach list headers to forwarded newsletters", () => {
+	it("does not attach list headers to forwarded newsletters", async () => {
 		const parentMessage = {
 			subject: "The Weekly Stack #142",
 			from: {
@@ -64,7 +64,7 @@ describe("NewsletterEmailPlugin", () => {
 			messageId: "<original@example.com>",
 		};
 
-		const result = plugin.generate(
+		const result = await plugin.generate(
 			createMockContext(7, { isForward: true, parentMessage }),
 		);
 
@@ -73,7 +73,7 @@ describe("NewsletterEmailPlugin", () => {
 
 	it("renders list headers into the compiled RFC 2822 message", async () => {
 		const context = createMockContext(2);
-		const content = plugin.generate(context);
+		const content = await plugin.generate(context);
 
 		const factory = new MessageFactory(context.faker);
 		const message = await factory.createMessage({
