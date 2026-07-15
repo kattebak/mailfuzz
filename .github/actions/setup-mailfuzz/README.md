@@ -31,7 +31,7 @@ Composite GitHub Action that sets up a complete local mail testing environment:
 
 ```yaml
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v5
 
   # Install from npm
   - uses: kattebak/mailfuzz/.github/actions/setup-mailfuzz@main

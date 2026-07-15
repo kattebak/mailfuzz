@@ -25,7 +25,7 @@ Connects to the server, authenticates, lists mailboxes, checks message count, an
 
 ```yaml
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v5
 
   - uses: kattebak/mailfuzz/.github/actions/verify-imap@main
     with:
