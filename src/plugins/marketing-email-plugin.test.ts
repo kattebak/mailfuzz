@@ -33,9 +33,9 @@ const createMockContext = (seed: number): GenerationContext => {
 describe("MarketingEmailPlugin", () => {
 	const plugin = new MarketingEmailPlugin();
 
-	it("sets List-Unsubscribe but never List-Id", () => {
+	it("sets List-Unsubscribe but never List-Id", async () => {
 		for (let seed = 0; seed < 40; seed++) {
-			const result = plugin.generate(createMockContext(seed));
+			const result = await plugin.generate(createMockContext(seed));
 
 			expect(result.headers?.["List-Unsubscribe"]).toBeDefined();
 			expect(result.headers?.["List-Unsubscribe"]).toMatch(/<https:\/\/.+>/);
